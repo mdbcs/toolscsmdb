@@ -903,7 +903,7 @@ async function sbDelete(t,id){const r=await fetch(`${SB_URL}/rest/v1/${t}?id=eq.
 // =========================================================
 // STATE
 // =========================================================
-let BRANDS = loadBrands();
+let BRANDS = loadBrandsLocal();
 let mitraDB = loadMitraLocal();
 let editMitraId = null;
 let editProdKey = null;

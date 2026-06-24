@@ -231,7 +231,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
             <div class="spinner"></div>
             <span style="font-size:12px;color:var(--text2);">Memuat CS FU Tracker...</span>
           </div>
-          <iframe id="iframeCsfu" class="tools-iframe" src="" onload="iframeLoaded('csfu')"></iframe>
+          <iframe id="iframeCsfu" class="tools-iframe" src=""></iframe>
         </div>
       </div>
 
@@ -250,7 +250,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
             <div class="spinner"></div>
             <span style="font-size:12px;color:var(--text2);">Memuat CS RO...</span>
           </div>
-          <iframe id="iframeCsro" class="tools-iframe" src="" onload="iframeLoaded('csro')"></iframe>
+          <iframe id="iframeCsro" class="tools-iframe" src=""></iframe>
         </div>
       </div>
 
@@ -269,7 +269,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
             <div class="spinner"></div>
             <span style="font-size:12px;color:var(--text2);">Memuat Admin Tools...</span>
           </div>
-          <iframe id="iframeAdmin" class="tools-iframe" src="" onload="iframeLoaded('admin')"></iframe>
+          <iframe id="iframeAdmin" class="tools-iframe" src=""></iframe>
         </div>
       </div>
 
@@ -284,7 +284,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
             <div class="spinner"></div>
             <span style="font-size:12px;color:var(--text2);">Memuat database Mitra &amp; Produk...</span>
           </div>
-          <iframe id="iframeMitraproduk" class="tools-iframe" src="" onload="iframeLoaded('mitraproduk')"></iframe>
+          <iframe id="iframeMitraproduk" class="tools-iframe" src=""></iframe>
         </div>
       </div>
 
@@ -519,6 +519,8 @@ function loadToolIframe(toolKey){
   const iframe=document.getElementById(idMap[toolKey]);
   if(!iframe) return;
   document.getElementById(toolKey+'Loading').style.display='flex';
+  // Pasang listener sebelum set src, supaya tidak ke-trigger oleh src kosong sebelumnya
+  iframe.onload = () => iframeLoaded(toolKey);
   iframe.src=TOOL_URLS[toolKey];
 }
 
