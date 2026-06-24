@@ -575,6 +575,29 @@ function xlDragOver(e){e.preventDefault();document.getElementById('xlDrop').clas
 
 function xlDragLeave(){document.getElementById('xlDrop').classList.remove('drag');}
 
+function showXlPreview(){
+  if(!xlParsed.length){toast('⚠️ Tidak ada data valid');return;}
+  const total=xlParsed.length,valid=xlParsed.filter(r=>r.kode&&r.nama).length;
+  const invalid=total-valid,dupDB=xlParsed.filter(r=>mitraDB.find(m=>m.kode===r.kode)).length;
+  document.getElementById('xlStat').innerHTML=`
+    <div class="xl-stat-item"><b>${total}</b><span>Total</span></div>
+    <div class="xl-stat-item"><b style="color:var(--green)">${valid}</b><span>Valid</span></div>
+    ${invalid?`<div class="xl-stat-item"><b style="color:var(--red)">${invalid}</b><span>Tidak lengkap</span></div>`:''}
+    ${dupDB?`<div class="xl-stat-item"><b style="color:var(--warn)">${dupDB}</b><span>Duplikat</span></div>`:''}`;
+  const warnEl=document.getElementById('xlWarn');
+  if(invalid){warnEl.style.display='flex';warnEl.textContent=`⚠️ ${invalid} baris tidak lengkap — akan dilewati.`;}
+  else{warnEl.style.display='none';}
+  document.getElementById('xlHead').innerHTML='<tr>'+XL_COLS.map(c=>`<th>${c}</th>`).join('')+'<th>Status</th></tr>';
+  document.getElementById('xlBody').innerHTML=xlParsed.slice(0,50).map(r=>{
+    const isValid=r.kode&&r.nama,isDupDB=!!mitraDB.find(m=>m.kode===r.kode);
+    const status=!isValid?`<span style="color:var(--red)">⚠ Tidak lengkap</span>`:isDupDB?`<span style="color:var(--warn)">⚡ Duplikat</span>`:`<span style="color:var(--green)">✓ Baru</span>`;
+    return`<tr><td>${r.kode||'—'}</td><td>${r.nama||'—'}</td><td>${r.telp||'—'}</td><td style="max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.alamat||'—'}</td><td>${r.eksp||'—'}</td><td>${r.brand||'—'}</td><td>${status}</td></tr>`;
+  }).join('');
+  document.getElementById('xlPreview').style.display='block';
+  document.getElementById('xlStep1').style.display='none';
+  document.getElementById('xlStep2').style.display='block';
+}
+
 function xlDropEv(e){e.preventDefault();xlDragLeave();const file=e.dataTransfer.files[0];if(file)parseXlFile(file);}
 
 function xlFileChange(input){if(input.files[0])parseXlFile(input.files[0]);}

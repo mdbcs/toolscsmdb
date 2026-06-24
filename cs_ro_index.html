@@ -632,11 +632,25 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div style="font-size:14px;font-weight:700;">🖨 Cetak Dokumen</div>
     <div style="font-size:12px;color:var(--text2);margin-top:2px;">Pilih order, lalu cetak Label Berat atau Surat Jalan satu-satu, atau pilih beberapa untuk cetak massal.</div>
   </div>
-  <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+  <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
     <input type="text" id="cetakFilterQ" placeholder="🔍 Cari nama mitra..." oninput="renderCetakList()" style="border:1.5px solid var(--border);border-radius:var(--r);padding:7px 11px;font-family:inherit;font-size:13px;flex:1;min-width:160px;">
     <select id="cetakFilterBrand" onchange="renderCetakList()" style="border:1.5px solid var(--border);border-radius:var(--r);padding:7px 10px;font-family:inherit;font-size:13px;background:var(--surface);">
       <option value="">Semua Brand</option>
     </select>
+  </div>
+  <!-- Filter Tanggal -->
+  <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
+    <button class="btn btn-o btn-sm cetak-date-qf" data-range="all" onclick="setCetakDateRange('all')">Semua</button>
+    <button class="btn btn-o btn-sm cetak-date-qf" data-range="today" onclick="setCetakDateRange('today')">Hari Ini</button>
+    <button class="btn btn-o btn-sm cetak-date-qf" data-range="yesterday" onclick="setCetakDateRange('yesterday')">Kemarin</button>
+    <button class="btn btn-o btn-sm cetak-date-qf" data-range="thisweek" onclick="setCetakDateRange('thisweek')">Minggu Ini</button>
+    <button class="btn btn-o btn-sm cetak-date-qf" data-range="lastmonth" onclick="setCetakDateRange('lastmonth')">Bulan Lalu</button>
+    <button class="btn btn-o btn-sm cetak-date-qf" data-range="custom" onclick="setCetakDateRange('custom')">Custom</button>
+  </div>
+  <div id="cetakCustomDateRange" style="display:none;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
+    <input type="date" id="cetakDateFrom" onchange="renderCetakList()" style="border:1.5px solid var(--border);border-radius:var(--r);padding:6px 10px;font-family:inherit;font-size:13px;">
+    <span style="font-size:12px;color:var(--text3);">s/d</span>
+    <input type="date" id="cetakDateTo" onchange="renderCetakList()" style="border:1.5px solid var(--border);border-radius:var(--r);padding:6px 10px;font-family:inherit;font-size:13px;">
   </div>
   <div id="cetakBulkBar" style="display:none;position:sticky;top:0;z-index:20;background:#111;color:#fff;border-radius:var(--r);padding:9px 12px;margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
     <span id="cetakSelCount" style="font-size:12px;font-weight:700;">0 dipilih</span>
@@ -2163,6 +2177,36 @@ function showRekap(id){fillRekapSel();document.getElementById('rSel').value=id;r
 // =========================================================
 let _sjDraftId=null, _sjDocType=null;
 let cetakSelected = new Set();
+let cetakActiveDateRange = 'all';
+
+function getCetakDateRangeBounds(range){
+  const now = new Date();
+  const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const today = startOfDay(now);
+  if(range==='today') return {from: today, to: new Date(today.getTime()+86400000-1)};
+  if(range==='yesterday'){ const y=new Date(today.getTime()-86400000); return {from:y, to:new Date(y.getTime()+86400000-1)}; }
+  if(range==='thisweek'){ const dow=(today.getDay()+6)%7; const monday=new Date(today.getTime()-dow*86400000); return {from:monday, to:new Date(today.getTime()+86400000-1)}; }
+  if(range==='lastmonth'){ const firstThis=new Date(now.getFullYear(),now.getMonth(),1); const firstLast=new Date(now.getFullYear(),now.getMonth()-1,1); return {from:firstLast, to:new Date(firstThis.getTime()-1)}; }
+  if(range==='custom'){
+    const fromEl=document.getElementById('cetakDateFrom')?.value;
+    const toEl=document.getElementById('cetakDateTo')?.value;
+    return { from: fromEl?new Date(fromEl+'T00:00:00'):null, to: toEl?new Date(toEl+'T23:59:59'):null };
+  }
+  return {from:null, to:null};
+}
+
+function setCetakDateRange(range){
+  cetakActiveDateRange = range;
+  document.querySelectorAll('.cetak-date-qf').forEach(b=>{
+    const isActive = b.dataset.range===range;
+    b.style.background = isActive ? 'var(--accent)' : '';
+    b.style.color = isActive ? '#fff' : '';
+    b.style.borderColor = isActive ? 'var(--accent)' : '';
+  });
+  const customEl=document.getElementById('cetakCustomDateRange');
+  if(customEl) customEl.style.display = (range==='custom') ? 'flex' : 'none';
+  renderCetakList();
+}
 
 function renderCetakList(){
   const c=document.getElementById('cetakListContainer');
@@ -2174,9 +2218,19 @@ function renderCetakList(){
   }
   const q=(document.getElementById('cetakFilterQ').value||'').toLowerCase();
   const brand=document.getElementById('cetakFilterBrand').value;
+  const {from, to} = getCetakDateRangeBounds(cetakActiveDateRange);
   let list=[...drafts];
   if(brand) list=list.filter(d=>d.brand===brand);
   if(q) list=list.filter(d=>(d.nama||'').toLowerCase().includes(q));
+  if(from || to){
+    list = list.filter(d=>{
+      if(!d.savedAt) return false;
+      const dt = new Date(d.savedAt);
+      if(from && dt < from) return false;
+      if(to && dt > to) return false;
+      return true;
+    });
+  }
   if(!list.length){ c.innerHTML='<div class="empty"><div class="ei">📭</div><p>Tidak ada order ditemukan.</p></div>'; updateCetakBulkBar(); return; }
   c.innerHTML=list.map(d=>{
     const b=BRANDS[d.brand]||{label:d.brand,color:'#888'};
