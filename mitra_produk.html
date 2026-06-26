@@ -310,6 +310,13 @@ const BRAND_DEFAULTS = {
     {code:'NGIFA',name:'Bumbu Tabur Balado Super Pedas 100gr',unit:'100gr',harga:8700,berat:100,alias:['bumbu balado','bt balado','balado super pedas']},
     {code:'NGDUH',name:'Bumbu Tabur Asin Daun Jeruk 100gr',unit:'100gr',harga:9300,berat:100,alias:['bumbu asin daun jeruk','bumbu daun jeruk','daun jeruk']},
     {code:'NG902',name:'Bumbu Tabur Ayam Bawang 100gr',unit:'100gr',harga:9000,berat:100,alias:['bumbu ayam bawang','bt ayam bawang','ayam bawang']},
+    {code:'NGAU2',name:'Foodpail 10pcs',unit:'pack',harga:14500,berat:200,kategori:'kemasan',alias:['foodpail','food pail','paperbowl 10pcs']},
+    {code:'NG-HFA29',name:'Hako/Foodpail Acrilic',unit:'pcs',harga:26000,berat:300,kategori:'kemasan',alias:['hako','foodpail acrilic','hako acrilic']},
+    {code:'NG-P30',name:'Payung',unit:'pcs',harga:124000,berat:1000,kategori:'perlengkapan',alias:['payung']},
+    {code:'NG-C33',name:'Celemek',unit:'pcs',harga:58000,berat:200,kategori:'perlengkapan',alias:['celemek','apron']},
+    {code:'NG299',name:'Banner + Xbanner',unit:'pcs',harga:51000,berat:1000,kategori:'perlengkapan',alias:['banner','xbanner','x banner','banner xbanner']},
+    {code:'NGTJ5',name:'Standing Banner Kayu',unit:'pcs',harga:330000,berat:3500,kategori:'perlengkapan',alias:['standing banner','standing banner kayu','banner kayu']},
+    {code:'NG-TB38',name:'Tenda Booth',unit:'unit',harga:670000,berat:10000,kategori:'perlengkapan',alias:['tenda booth','tenda','booth']},
   ]},
   melumer:{label:'Melumer',color:'#1D4ED8',products:[
     {code:'ML-MM',name:'Macaroni Mateng',unit:'kg',harga:35000,berat:1000,alias:['makaroni mateng','makaroni','macaroni','makaroni matang']},
@@ -326,7 +333,7 @@ const BRAND_DEFAULTS = {
     {code:'ML-CO',name:'Chili Oil',unit:'kg',harga:87000,berat:1000,alias:['chili oil','cili oil']},
     {code:'ML-SBQ',name:'Saus BBQ',unit:'kg',harga:54000,berat:1000,alias:['saus bbq','saos bbq']},
     {code:'ML-SBL',name:'Saus Bolognese 500gr',unit:'500gr',harga:41500,berat:500,alias:['saus bolognese','bolognese']},
-    {code:'ML-NR',name:'Nori 200gr',unit:'200gr',harga:50000,berat:200,alias:['nori']},
+    {code:'ML-NR',name:'Nori 200gr',unit:'200gr',harga:50000,berat:200,kategori:'kemasan',alias:['nori']},
     {code:'ML-BO',name:'Bumbu Tabur Original 100gr',unit:'100gr',harga:5800,berat:100,alias:['bumbu original','bt ori']},
     {code:'ML-BK',name:'Bumbu Tabur Keju 100gr',unit:'100gr',harga:5800,berat:100,alias:['bumbu keju','bt keju']},
     {code:'ML-BJ',name:'Bumbu Tabur Jagung Manis 100gr',unit:'100gr',harga:5800,berat:100,alias:['bumbu jagung manis','jagung manis']},
@@ -345,9 +352,9 @@ const BRAND_DEFAULTS = {
     {code:'GK-BTKP',name:'Batagor Keju Pedas',unit:'pcs',harga:8000,berat:0,alias:['batagor keju pedas','batagor keju']},
     {code:'GK-BTAB',name:'Batagor Ayam Bawang',unit:'pcs',harga:8000,berat:0,alias:['batagor ayam bawang','batagor ayam']},
     {code:'GK-BTPJ',name:'Batagor Pedas Juara',unit:'pcs',harga:8000,berat:0,alias:['batagor pedas juara','batagor pedas']},
-    {code:'GK-PB',name:'Paperbowl',unit:'pcs',harga:1250,berat:0,alias:['paperbowl','paper bowl','bowl']},
-    {code:'GK-TTP',name:'Tutup',unit:'pcs',harga:250,berat:0,alias:['tutup']},
-    {code:'GK-SDK',name:'Sendok Bebek',unit:'pcs',harga:200,berat:0,alias:['sendok bebek','sendok']},
+    {code:'GK-PB',name:'Paperbowl',unit:'pcs',harga:1250,berat:0,kategori:'kemasan',alias:['paperbowl','paper bowl','bowl']},
+    {code:'GK-TTP',name:'Tutup',unit:'pcs',harga:250,berat:0,kategori:'kemasan',alias:['tutup']},
+    {code:'GK-SDK',name:'Sendok Bebek',unit:'pcs',harga:200,berat:0,kategori:'perlengkapan',alias:['sendok bebek','sendok']},
     {code:'GK-SP',name:'Saus Pedas',unit:'kg',harga:29000,berat:1000,alias:['saus pedas','saos pedas']},
     {code:'GK-CO',name:'Chili Oil',unit:'kg',harga:87000,berat:1000,alias:['chili oil','cili oil']},
     {code:'GK-PGS',name:'Pangsit',unit:'kg',harga:42000,berat:1000,alias:['pangsit']},
@@ -359,11 +366,11 @@ const BRAND_DEFAULTS = {
     {code:'YC-FS',name:'Fried Series',unit:'pcs',harga:7000,berat:0,alias:['fried series','fried']},
     {code:'YC-AS',name:'Authentic Series',unit:'pcs',harga:7000,berat:0,alias:['authentic series','authentic']},
     {code:'YC-FB',name:'Fire Blast',unit:'pcs',harga:7000,berat:0,alias:['fire blast']},
-    {code:'YC-NR',name:'Nori 1 Box 24 Lembar',unit:'pack',harga:35000,berat:0,alias:['nori']},
-    {code:'YC-PB',name:'Paperbowl',unit:'pcs',harga:1800,berat:0,alias:['paperbowl','bowl']},
-    {code:'YC-TTP',name:'Tutup',unit:'pcs',harga:300,berat:0,alias:['tutup']},
-    {code:'YC-SDK',name:'Sendok Bebek',unit:'pcs',harga:200,berat:0,alias:['sendok bebek','sendok']},
-    {code:'YC-SPT',name:'Sumpit',unit:'pcs',harga:300,berat:0,alias:['sumpit']},
+    {code:'YC-NR',name:'Nori 1 Box 24 Lembar',unit:'pack',harga:35000,berat:0,kategori:'kemasan',alias:['nori']},
+    {code:'YC-PB',name:'Paperbowl',unit:'pcs',harga:1800,berat:0,kategori:'kemasan',alias:['paperbowl','bowl']},
+    {code:'YC-TTP',name:'Tutup',unit:'pcs',harga:300,berat:0,kategori:'kemasan',alias:['tutup']},
+    {code:'YC-SDK',name:'Sendok Bebek',unit:'pcs',harga:200,berat:0,kategori:'perlengkapan',alias:['sendok bebek','sendok']},
+    {code:'YC-SPT',name:'Sumpit',unit:'pcs',harga:300,berat:0,kategori:'perlengkapan',alias:['sumpit']},
     {code:'YC-SP',name:'Saus Pedas',unit:'kg',harga:29000,berat:1000,alias:['saus pedas','saos pedas']},
     {code:'YC-CO',name:'Chili Oil',unit:'kg',harga:87000,berat:1000,alias:['chili oil','cili oil']},
   ]},
@@ -382,9 +389,9 @@ const BRAND_DEFAULTS = {
     {code:'BC-SMY',name:'Siomay',unit:'kg',harga:48000,berat:1000,alias:['siomay','siomai']},
     {code:'BC-USU',name:'Usus',unit:'kg',harga:65000,berat:1000,alias:['usus']},
     {code:'BC-PGS',name:'Pangsit',unit:'kg',harga:50000,berat:1000,alias:['pangsit']},
-    {code:'BC-PB',name:'Paperbowl',unit:'pcs',harga:1800,berat:0,alias:['paperbowl','bowl']},
-    {code:'BC-TTP',name:'Tutup',unit:'pcs',harga:300,berat:0,alias:['tutup']},
-    {code:'BC-SDK',name:'Sendok Bebek',unit:'pcs',harga:200,berat:0,alias:['sendok bebek','sendok']},
+    {code:'BC-PB',name:'Paperbowl',unit:'pcs',harga:1800,berat:0,kategori:'kemasan',alias:['paperbowl','bowl']},
+    {code:'BC-TTP',name:'Tutup',unit:'pcs',harga:300,berat:0,kategori:'kemasan',alias:['tutup']},
+    {code:'BC-SDK',name:'Sendok Bebek',unit:'pcs',harga:200,berat:0,kategori:'perlengkapan',alias:['sendok bebek','sendok']},
     {code:'BC-SP',name:'Saus Pedas',unit:'kg',harga:29000,berat:1000,alias:['saus pedas']},
   ]},
 };
@@ -801,21 +808,30 @@ function aliasKeydown(e){
 }
 
 async function loadBrandsSync() {
-  const localBackup = loadBrandsLocal();
   setSyncStatus('loading', 'Memuat produk...');
   try {
     const rows = await sbGet('shared_config', "key=eq.cs_ro_brands");
-    if (!rows.length || !rows[0].value) throw new Error('Belum ada data produk di cloud');
-    const result = rows[0].value;
-    // Validasi minimal: harus ada minimal 1 brand dengan produk
-    const hasProducts = Object.keys(result||{}).some(k => Array.isArray(result[k]?.products) && result[k].products.length>0);
-    if (!hasProducts) throw new Error('Data produk dari cloud kosong');
-    localStorage.setItem('brandsDB', JSON.stringify(result));
-    setSyncStatus('ok', 'Produk tersinkron');
-    return result;
+    const hasCloudData = rows.length && rows[0].value &&
+      Object.keys(rows[0].value).some(k => Array.isArray(rows[0].value[k]?.products) && rows[0].value[k].products.length>0);
+    if (hasCloudData) {
+      // Cloud adalah satu-satunya sumber kebenaran — selalu pakai ini kalau ada
+      const result = rows[0].value;
+      localStorage.setItem('brandsDB', JSON.stringify(result)); // cache untuk fallback offline saja
+      setSyncStatus('ok', 'Produk tersinkron');
+      return result;
+    }
+    // Cloud benar-benar kosong (instalasi pertama kali) — seed dengan default lengkap & upload ke cloud
+    const seed = JSON.parse(JSON.stringify(BRAND_DEFAULTS));
+    localStorage.setItem('brandsDB', JSON.stringify(seed));
+    try{
+      await sbUpsert('shared_config', { key:'cs_ro_brands', value: seed, updated_at: new Date().toISOString() });
+      setSyncStatus('ok', 'Produk awal tersimpan ke cloud');
+    }catch(e2){ setSyncStatus('error', 'Gagal seed produk ke cloud'); }
+    return seed;
   } catch(e) {
-    setSyncStatus('error', 'Pakai data lokal');
-    return localBackup;
+    // Gagal koneksi — pakai cache lokal terakhir sebagai fallback SEMENTARA (bukan sumber utama)
+    setSyncStatus('error', 'Offline — pakai cache lokal');
+    return loadBrandsLocal();
   }
 }
 
@@ -853,10 +869,11 @@ function loadBrandsLocal() {
   return JSON.parse(JSON.stringify(BRAND_DEFAULTS));
 }
 
-async function loadMitraSync() {
+async function loadMitraSync(opts) {
+  const silent = opts && opts.silentRender;
   const localBackup = loadMitraLocal(); // simpan cache lokal dulu sebelum fetch
 
-  setSyncStatus('loading', 'Memuat mitra...');
+  if(!silent) setSyncStatus('loading', 'Memuat mitra...');
   try {
     const rows = await sbGet('cs_ro_mitra', 'select=*&order=created_at.desc');
 
@@ -870,7 +887,7 @@ async function loadMitraSync() {
       mitraDB = localBackup;
       setSyncStatus('error', 'Server kosong, pakai cache lokal ('+localBackup.length+' mitra)');
       updMitraCount();
-      renderMitraDB();
+      if(!silent) renderMitraDB();
       return;
     }
 
@@ -878,13 +895,13 @@ async function loadMitraSync() {
     localStorage.setItem('mitraDB', JSON.stringify(mitraDB));
     setSyncStatus('ok', 'Mitra tersinkron ✓ ('+mitraDB.length+')');
     updMitraCount();
-    renderMitraDB();
+    if(!silent) renderMitraDB();
   } catch(e) {
     // Gagal sinkron — JANGAN hapus data, pakai cache lokal yang sudah ada
     mitraDB = localBackup;
     setSyncStatus('error', 'Gagal sinkron — pakai cache lokal ('+localBackup.length+')');
     updMitraCount();
-    renderMitraDB();
+    if(!silent) renderMitraDB();
     console.error('loadMitraSync error:', e);
   }
 }
@@ -995,18 +1012,14 @@ function showTab(t){
 // =========================================================
 // INIT
 // =========================================================
+let _mpIsEditing = false; // true saat user sedang mengisi form / modal terbuka
+document.addEventListener('focusin', (e)=>{ if(e.target.matches('input,textarea,select')) _mpIsEditing = true; });
+document.addEventListener('focusout', ()=>{ setTimeout(()=>{ _mpIsEditing = false; }, 800); });
+
 async function init(){
   renderMitraDB();
   renderProduk();
-
   setSyncStatus('loading', 'Menghubungkan ke database...');
-  try {
-    await sbGet('shared_config', 'key=eq.cs_ro_brands&limit=1');
-  } catch(e) {
-    setSyncStatus('error', 'Gagal terhubung: ' + e.message);
-    console.error('Init ping failed:', e);
-    return;
-  }
 
   try {
     await loadMitraSync();
@@ -1027,18 +1040,28 @@ async function init(){
 
   setSyncStatus('ok', 'Semua data tersinkron');
 
-  // Polling setiap 10 detik agar perubahan dari tools lain ikut muncul
+  // Polling ringan setiap 25 detik — skip kalau sedang ada modal terbuka / user mengetik,
+  // dan hanya re-render jika data benar-benar berubah (hindari kerja render sia-sia).
   setInterval(async ()=>{
+    if(_mpIsEditing) return;
+    const modalOpen = ['mitraModal','prodModal','xlModal'].some(id=>{
+      const el=document.getElementById(id); return el && el.style.display==='flex';
+    });
+    if(modalOpen) return;
     try{
-      await loadMitraSync();
+      const prevMitraJSON = JSON.stringify(mitraDB);
+      const prevBrandsJSON = JSON.stringify(BRANDS);
+      await loadMitraSync({silentRender:true});
       const rb = await loadBrandsSync();
-      if(rb){ BRANDS = rb; renderProduk(); }
+      if(rb) BRANDS = rb;
+      if(JSON.stringify(mitraDB)!==prevMitraJSON) renderMitraDB();
+      if(JSON.stringify(BRANDS)!==prevBrandsJSON) renderProduk();
       setSyncStatus('ok', 'Tersinkron ✓');
     }catch(e){
       console.error('Polling sync error:', e);
       setSyncStatus('error','Gagal sinkron berkala: '+e.message);
     }
-  }, 10000);
+  }, 25000);
 }
 
 init();

@@ -288,7 +288,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
         <select id="dep_mkt"><option value="">-- Pilih --</option></select>
       </div>
       <div class="fg"><label>Tipe*</label>
-        <select id="dep_tipe" onchange="updDepTipe()">
+        <select id="dep_tipe">
           <option value="in">💚 Uang Masuk (kelebihan)</option>
           <option value="out">❤️ Uang Keluar (potongan)</option>
         </select>
@@ -1303,7 +1303,7 @@ async function deleteDraftFromCloud(id){
 }
 
 let _isFillingForm = false; // true saat user sedang isi form verifikasi
-let _pollTimerAdmin = setInterval(()=>{ if(!_isFillingForm) pullDraftsFromCloud(true); }, 8000);
+let _pollTimerAdmin = setInterval(()=>{ if(!_isFillingForm) pullDraftsFromCloud(true); }, 20000);
 document.addEventListener('focusin', (e) => { if (e.target.matches('input,textarea,select')) _isFillingForm = true; });
 document.addEventListener('focusout', () => { setTimeout(()=>{ _isFillingForm = false; }, 800); });
 
@@ -1355,9 +1355,17 @@ async function loadAllFromSheets() {
     aktualMasterDB = LS('adm_aktual_master', []);
     fillMktDropdowns(); renderMarketing(); updBadges();
   }
+}
 
-  // Polling tiap 15 detik supaya perubahan dari laptop lain ikut muncul
-  setInterval(()=>{ if(!_isFillingForm) loadAllFromSheets(); }, 15000);
+// Polling tunggal di level global (bukan di dalam loadAllFromSheets — itu bug yang
+// menyebabkan interval berlipat ganda setiap kali fungsi dipanggil ulang).
+// Interval diperpanjang & dilewati saat user sedang mengisi form, supaya ringan dipakai
+// banyak orang bersamaan.
+let _adminPollStarted = false;
+function startAdminPolling(){
+  if(_adminPollStarted) return;
+  _adminPollStarted = true;
+  setInterval(()=>{ if(!_isFillingForm) loadAllFromSheets(); }, 30000);
 }
 
 // ── Helper simpan/hapus per kategori data (Supabase) ──────────────────────
@@ -1431,8 +1439,9 @@ function showSyncStatus(msg, hideAfter=0) {
 }
 
 // =========================================================
-// PRODUK — sumber tunggal dari database CS RO (shared_config: cs_ro_brands)
-// Dipakai bersama oleh CS RO, CS FU, dan Admin (lihat tools "Mitra & Produk")
+// PRODUK — sumber tunggal dari tools "Mitra & Produk" (shared_config: cs_ro_brands)
+// Dipakai bersama oleh CS RO, CS FU, dan Admin. PRODUK_DB lokal di atas HANYA
+// dipakai sebagai darurat-mutlak kalau cloud & cache lokal benar-benar tidak tersedia.
 // =========================================================
 let sharedProdukDB = loadSharedProdukLocal();
 
@@ -1441,20 +1450,21 @@ function loadSharedProdukLocal(){
   catch(e){ return []; }
 }
 
-// Ubah format BRANDS[brand].products jadi flat array {brand,code,name,unit,harga,berat}
+// Ubah format BRANDS[brand].products jadi flat array {brand,code,name,unit,harga,berat,kategori,alias}
 function flattenBrandsToProduk(brandsObj){
   const out = [];
   Object.keys(brandsObj||{}).forEach(brandKey=>{
     const products = brandsObj[brandKey]?.products || [];
     products.forEach(p=>{
-      out.push({ brand:brandKey, code:p.code, name:p.name, unit:p.unit, harga:p.harga, berat:p.berat||0 });
+      out.push({ brand:brandKey, code:p.code, name:p.name, unit:p.unit, harga:p.harga, berat:p.berat||0, kategori:p.kategori||'', alias:p.alias||[] });
     });
   });
   return out;
 }
 
 function getAllProduk(){
-  // Sumber tunggal: database produk resmi dari CS RO (dikelola di tools "Mitra & Produk")
+  // Sumber tunggal: database produk resmi dikelola di tools "Mitra & Produk".
+  // PRODUK_DB lama hanya fallback darurat kalau benar-benar belum pernah sinkron sama sekali.
   return sharedProdukDB.length ? sharedProdukDB : PRODUK_DB;
 }
 
@@ -3241,7 +3251,7 @@ function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t
 // INIT
 // =========================================================
 // Load dari Sheets dulu, fallback ke lokal jika gagal
-loadAllFromSheets();
+loadAllFromSheets().finally(()=>startAdminPolling());
 // Draft: sinkron dari Supabase (semua laptop), fallback localStorage
 updateSyncBadgeAdmin();
 pullDraftsFromCloud();

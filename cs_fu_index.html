@@ -457,14 +457,10 @@ function rowToEntry(r){
     copas:r.copas, ts:r.ts };
 }
 function mitraToRow(m){
-  // Map ke struktur cs_ro_mitra (database mitra resmi, dipakai bersama semua tools)
-  // Kalau belum ada kode resmi (misal calon mitra baru dari follow-up), buat kode sementara
-  const kode = m.kode || ('FU-' + (m._key||String(m.ts||Date.now())).slice(-8));
-  return { id: m._key||String(m.ts||Date.now()), kode, nama:m.nama||'', telp:m.hp||'', alamat:m.alamat||'', eksp:m.eksp||'', brand:m.brand||'' };
+  return { id: m._key||String(m.ts||Date.now()), nama:m.nama||'', alamat:m.alamat||'', hp:m.hp||'', brand:m.brand||'', ts:m.ts||Date.now() };
 }
 function rowToMitra(r){
-  // Map dari struktur cs_ro_mitra ke struktur internal CS FU (hp = telp)
-  return { _key:r.id, kode:r.kode, nama:r.nama, alamat:r.alamat, hp:r.telp, eksp:r.eksp, brand:r.brand, ts:Date.now() };
+  return { _key:r.id, nama:r.nama, alamat:r.alamat, hp:r.hp, brand:r.brand, ts:r.ts };
 }
 
 let dbConnected = false;
@@ -475,31 +471,39 @@ function setStatus(type, text) {
 }
 
 async function syncFromSupabase(silent) {
-  const backupEntries = [...(state.entries||[])];
-  const backupMitras  = [...(state.mitras||[])];
   try {
     const [entryRows, mitraRows, cfgRows] = await Promise.all([
       sbGet('cs_fu_entries', 'select=*&order=ts.desc'),
-      sbGet('cs_ro_mitra', 'select=*&order=created_at.desc'),
+      sbGet('cs_fu_mitra', 'select=*&order=ts.desc'),
       sbGet('shared_config', "key=in.(cs_fu_brands,cs_fu_kategori,cs_fu_discs)"),
     ]);
-
-    const fetchedEntries = entryRows.map(rowToEntry);
-    const fetchedMitras  = mitraRows.map(rowToMitra);
-
-    // PENTING: jangan timpa cache lokal dengan data kosong kalau sebelumnya sudah ada isinya
-    state.entries = (fetchedEntries.length === 0 && backupEntries.length > 0) ? backupEntries : fetchedEntries;
-    state.mitras  = (fetchedMitras.length === 0 && backupMitras.length > 0) ? backupMitras : fetchedMitras;
-
+    const newEntries = entryRows.map(rowToEntry);
+    const newMitras  = mitraRows.map(rowToMitra);
+    let newBrands = state.brands;
+    let newKategori = state.kategori;
+    let newDiscs = state.discs;
     cfgRows.forEach(row => {
-      if (row.key === 'cs_fu_brands' && row.value) state.brands = row.value;
-      if (row.key === 'cs_fu_kategori' && row.value) state.kategori = row.value;
-      if (row.key === 'cs_fu_discs' && row.value) state.discs = row.value;
+      if (row.key === 'cs_fu_brands' && row.value) newBrands = row.value;
+      if (row.key === 'cs_fu_kategori' && row.value) newKategori = row.value;
+      if (row.key === 'cs_fu_discs' && row.value) newDiscs = row.value;
     });
+
+    // Bandingkan sebelum-sesudah supaya tidak re-render kalau memang tidak ada perubahan
+    const changed = JSON.stringify(newEntries)!==JSON.stringify(state.entries)
+      || JSON.stringify(newMitras)!==JSON.stringify(state.mitras)
+      || JSON.stringify(newBrands)!==JSON.stringify(state.brands)
+      || JSON.stringify(newKategori)!==JSON.stringify(state.kategori)
+      || JSON.stringify(newDiscs)!==JSON.stringify(state.discs);
+
+    state.entries = newEntries;
+    state.mitras  = newMitras;
+    state.brands  = newBrands;
+    state.kategori = newKategori;
+    state.discs = newDiscs;
     saveLocal();
     dbConnected = true;
     setStatus('ok', '🟢 Terhubung (Supabase)');
-    refreshUI();
+    if (changed || !silent) refreshUI();
   } catch (e) {
     dbConnected = false;
     setStatus('err', '🔴 Offline — data lokal');
@@ -507,9 +511,9 @@ async function syncFromSupabase(silent) {
   }
 }
 
-// Polling tiap 8 detik biar entry dari CS lain ikut muncul, tanpa ganggu saat user lagi mengisi form
+// Polling tiap 20 detik biar entry dari CS lain ikut muncul, tanpa ganggu saat user lagi mengisi form
 let _isTyping = false;
-let _pollTimer = setInterval(() => { if (!_isTyping) syncFromSupabase(true); }, 8000);
+let _pollTimer = setInterval(() => { if (!_isTyping) syncFromSupabase(true); }, 20000);
 document.addEventListener('focusin', (e) => { if (e.target.matches('input,textarea,select')) _isTyping = true; });
 document.addEventListener('focusout', () => { setTimeout(()=>{ _isTyping = false; }, 500); });
 
@@ -522,7 +526,7 @@ function pushEntry(entry) {
 function pushMitra(mitra) {
   state.mitras.push(mitra);
   saveLocal(); renderMitraList();
-  sbUpsert('cs_ro_mitra', mitraToRow(mitra)).catch(e=>console.warn('Gagal sync mitra:', e.message));
+  sbPost('cs_fu_mitra', mitraToRow(mitra)).catch(e=>console.warn('Gagal sync mitra:', e.message));
 }
 
 function saveConfig(key, val) {
@@ -536,7 +540,7 @@ function saveConfig(key, val) {
 function deleteMitra(key) {
   state.mitras = state.mitras.filter(m => m._key !== key);
   saveLocal(); renderMitraList();
-  sbDelete('cs_ro_mitra', key).catch(e=>console.warn('Gagal hapus mitra:', e.message));
+  sbDelete('cs_fu_mitra', key).catch(e=>console.warn('Gagal hapus mitra:', e.message));
 }
 
 function updateEntry(key, changes) {

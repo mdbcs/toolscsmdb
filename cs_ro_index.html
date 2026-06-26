@@ -272,43 +272,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   </div>
 </div>
 
-<!-- ===== MODAL: TAMBAH/EDIT PRODUK ===== -->
-<div class="modal-bg" id="prodModal" style="display:none;" onclick="if(event.target===this)closeProdModal()">
-  <div class="modal modal-lg">
-    <div class="modal-title"><span id="prodModalTitle">Tambah Produk</span><button onclick="closeProdModal()">✕</button></div>
-    <div class="frow">
-      <div class="fg"><label>Kode Produk *</label><input id="pm_code" placeholder="cth: NG-XYZ"></div>
-      <div class="fg"><label>Nama Produk *</label><input id="pm_name" placeholder="Nama resmi produk"></div>
-    </div>
-    <div class="f3">
-      <div class="fg"><label>Satuan *</label>
-        <select id="pm_unit"><option value="kg">kg</option><option value="pcs">pcs</option><option value="pack">pack</option><option value="500gr">500gr</option><option value="200gr">200gr</option><option value="100gr">100gr</option></select>
-      </div>
-      <div class="fg"><label>Harga (Rp) *</label><input type="number" id="pm_harga" placeholder="35000"></div>
-      <div class="fg"><label>Berat (gram)</label><input type="number" id="pm_berat" placeholder="1000"></div>
-    </div>
-    <div class="fg"><label>Kategori</label>
-      <select id="pm_kategori">
-        <option value="bahan baku">Bahan Baku</option>
-        <option value="saus">Saus</option>
-        <option value="bumbu">Bumbu</option>
-        <option value="kemasan">Kemasan</option>
-        <option value="perlengkapan">Perlengkapan</option>
-      </select>
-    </div>
-    <div class="fg">
-      <label>Alias / Keyword Pengenalan</label>
-      <input id="pm_alias_input" placeholder="Ketik alias lalu tekan Enter atau koma..." onkeydown="aliasKeydown(event)">
-      <small style="font-size:11px;color:var(--text3);margin-top:3px;">Pisahkan dengan Enter atau koma. Contoh: makaroni, macaroni, mac mateng</small>
-      <div id="pm_alias_tags" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;"></div>
-    </div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
-      <button class="btn btn-o" onclick="closeProdModal()">Batal</button>
-      <button class="btn btn-p" onclick="saveProdModal()">Simpan Produk</button>
-    </div>
-  </div>
-</div>
-
 <!-- ===== MODAL: IMPORT EXCEL MITRA ===== -->
 <div class="modal-bg" id="xlModal" style="display:none;" onclick="if(event.target===this)closeXlModal()">
   <div class="modal modal-lg">
@@ -450,12 +413,24 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div class="card">
       <div class="card-title">1️⃣ Pilih Brand</div>
       <div id="orderCsNote" style="display:none;font-size:11px;color:var(--text3);margin:-4px 0 10px;">📝 Order ini akan tercatat sebagai dibuat oleh <strong id="orderCsNoteName"></strong></div>
-      <div class="bgrid">
+
+      <!-- Tampil saat brand BELUM dikunci (belum klik Lanjut) -->
+      <div class="bgrid" id="brandPickGrid">
         <div class="bb brand-ngemiloh" onclick="selBrand('ngemiloh')"><div class="bmk">🍿</div><div class="bname">Ngemiloh</div><div class="bcat">Makanan Kering</div></div>
         <div class="bb brand-melumer" onclick="selBrand('melumer')"><div class="bmk">🧁</div><div class="bname">Melumer</div><div class="bcat">Makanan Kering</div></div>
         <div class="bb brand-gokuah" onclick="selBrand('gokuah')"><div class="bmk">🍜</div><div class="bname">Gokuah</div><div class="bcat">Makanan Kuah</div></div>
         <div class="bb brand-yamie" onclick="selBrand('yamie')"><div class="bmk">🍛</div><div class="bname">Yamie Curry</div><div class="bcat">Makanan Kuah</div></div>
         <div class="bb brand-bacigor" onclick="selBrand('bacigor')"><div class="bmk">🥟</div><div class="bname">Bacigor Mamang</div><div class="bcat">Repeat Only</div></div>
+      </div>
+
+      <!-- Tampil saat brand SUDAH dikunci -->
+      <div id="brandLockedBox" style="display:none;align-items:center;gap:10px;padding:12px 14px;border:1.5px solid var(--accent);background:var(--accent-l);border-radius:var(--r);">
+        <span id="brandLockedIcon" style="font-size:22px;"></span>
+        <div style="flex:1;">
+          <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;">Brand Order Ini</div>
+          <div id="brandLockedName" style="font-weight:700;font-size:14px;"></div>
+        </div>
+        <button class="btn btn-o btn-sm" onclick="unlockBrand()">🔄 Ubah Brand</button>
       </div>
     </div>
 
@@ -490,7 +465,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <!-- Hidden fields - dipindah ke Step 4 tapi tetap perlu ada untuk kompatibilitas -->
       <div style="display:none"><input id="f_eksp_h" tabindex="-1"><input id="f_pay_h" tabindex="-1"><input id="f_tf_h" tabindex="-1"></div>
     </div>
-    <div class="nav"><button class="btn btn-p" onclick="goStep(2)">Lanjut →</button></div>
+    <div class="nav"><button class="btn btn-p" onclick="confirmStep1()">Lanjut →</button></div>
   </div>
 
   <!-- STEP 2: Paste WA -->
@@ -563,7 +538,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
           <select id="f_pay" onchange="genOutput()"><option value="">-- Pilih --</option><option>BCA</option><option>BRI</option><option>BNI</option><option>Mandiri</option><option>BSI</option><option>Dana</option><option>OVO</option><option>GoPay</option><option>COD</option></select>
         </div>
       </div>
-      <div class="fg"><label>Nama Pengirim TF</label><input id="f_tf" placeholder="Nama sesuai rekening" oninput="genOutput()"></div>
+      <div class="fg">
+        <label>Nama Pengirim TF</label>
+        <div style="display:flex;gap:6px;margin-bottom:6px;">
+          <button type="button" class="btab active" id="tfSameBtn" onclick="setTfMode('same')" style="flex:1;text-align:center;">Sama dengan Mitra</button>
+          <button type="button" class="btab" id="tfDiffBtn" onclick="setTfMode('diff')" style="flex:1;text-align:center;">Beda / Manual</button>
+        </div>
+        <input id="f_tf" placeholder="Nama sesuai rekening" oninput="genOutput()" readonly>
+      </div>
     </div>
     <div class="card">
       <div class="card-title">💰 Ongkir & Total</div>
@@ -592,6 +574,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <div class="srow" id="fSetelahDiskonRow" style="display:none;"><span>Setelah Diskon</span><span id="fSetelahDiskon">—</span></div>
         <div class="srow"><span>Ongkir</span><span id="fO">—</span></div>
         <div class="srow"><span>⚖️ Berat Total</span><span id="fBerat">—</span></div>
+        <div class="srow" id="fPorsi" style="display:none;"><span>🍜 Total Porsi</span><span id="fPorsiVal" style="font-weight:700;color:var(--red);">—</span></div>
         <div class="srow tot"><span>Total Pembayaran</span><span id="fG">—</span></div>
       </div>
     </div>
@@ -830,18 +813,23 @@ function setSyncStatus(status, msg='') {
   el.innerHTML = `<span style="color:${s.color};font-size:12px;font-weight:600;">${s.icon} ${s.text}</span>`;
 }
 
-// Load produk dari Supabase (shared_config), fallback ke localStorage lalu default
+// Load produk dari Supabase (shared_config) — SATU-SATUNYA sumber kebenaran.
+// Tools ini tidak lagi punya database produk sendiri; produk dikelola di tools "Mitra & Produk".
 async function loadBrandsSync() {
   setSyncStatus('loading', 'Memuat produk...');
   try {
     const rows = await sbGet('shared_config', "key=eq.cs_ro_brands");
-    if (!rows.length || !rows[0].value) throw new Error('Belum ada data produk di cloud');
+    const hasCloudData = rows.length && rows[0].value &&
+      Object.keys(rows[0].value).some(k => Array.isArray(rows[0].value[k]?.products) && rows[0].value[k].products.length>0);
+    if (!hasCloudData) throw new Error('Belum ada data produk di cloud');
     const result = rows[0].value;
-    localStorage.setItem('brandsDB', JSON.stringify(result));
+    localStorage.setItem('brandsDB', JSON.stringify(result)); // cache offline-fallback saja
     setSyncStatus('ok', 'Produk tersinkron');
     return result;
   } catch(e) {
-    setSyncStatus('error', 'Pakai data lokal');
+    // Tidak ada koneksi ke cloud sama sekali — pakai cache lokal TERAKHIR (bukan default statis),
+    // supaya semua tools tetap konsisten dengan apa yang pernah disinkronkan, bukan data acak per-browser.
+    setSyncStatus('error', 'Offline — pakai cache terakhir');
     return loadBrandsLocal();
   }
 }
@@ -1018,14 +1006,14 @@ async function deleteDraftFromCloud(id){
   catch(e){ console.warn('Gagal hapus dari cloud:', e.message); }
 }
 
-// Polling tiap 8 detik supaya draft dari laptop lain ikut muncul
+// Polling tiap 20 detik supaya draft dari laptop lain ikut muncul, tanpa membanjiri koneksi
 let _pollTimer=null;
 function startPolling(){
   if(_pollTimer) clearInterval(_pollTimer);
   _pollTimer=setInterval(()=>{
     // Jangan ganggu kalau user sedang mengisi form order (curBrand aktif)
     if(!curBrand) pullDraftsFromCloud(true);
-  }, 8000);
+  }, 20000);
 }
 // =========================================================
 // STATE & STORAGE
@@ -1033,9 +1021,6 @@ function startPolling(){
 let drafts      = JSON.parse(localStorage.getItem('orderDrafts') || '[]'); // cache awal, akan ditimpa data cloud
 let mitraDB     = loadMitraLocal();
 let curBrand    = null, items = [], editId = null, editMitraId = null;
-let editProdKey = null;
-let prodCurrentBrand = 'ngemiloh';
-let pendingAliases = [];
 
 // =========================================================
 // IDENTITAS CS — diterima dari parent (sistem OpsTools)
@@ -1113,156 +1098,6 @@ function showTab(t){
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.style.opacity='1'; clearTimeout(t._t); t._t=setTimeout(()=>t.style.opacity='0',2400); }
 
 // =========================================================
-// PRODUK MANAGEMENT
-// =========================================================
-let prodBrandFilter = 'ngemiloh';
-let prodKatFilter = '';
-
-function renderProduk(){
-  // UI manajemen produk sudah dipindah ke tools "Mitra & Produk" terpisah.
-  // Fungsi ini dibiarkan no-op aman supaya pemanggil lain tidak error.
-  const tabEl = document.getElementById('prodBrandTabs');
-  if(!tabEl) return; // panel sudah tidak ada di tools ini
-  tabEl.innerHTML = Object.keys(BRANDS).map(k=>`
-    <div class="btab${prodBrandFilter===k?' active':''}" onclick="setProdBrand('${k}')">${BRANDS[k].label}</div>
-  `).join('');
-
-  const katEl = document.getElementById('prodKatTabs');
-  if(katEl){
-    katEl.innerHTML = `<div class="btab${prodKatFilter===''?' active':''}" onclick="setProdKat('')">Semua Kategori</div>`
-      + KATEGORI_LIST.map(k=>`<div class="btab${prodKatFilter===k?' active':''}" onclick="setProdKat('${k}')">${k}</div>`).join('');
-  }
-
-  let prods = BRANDS[prodBrandFilter]?.products || [];
-  if(prodKatFilter) prods = prods.filter(p=>(p.kategori||inferKategori(p))===prodKatFilter);
-  const tbody = document.getElementById('prodTableBody');
-  const empty = document.getElementById('prodEmpty');
-  if(!tbody) return;
-
-  if(!prods.length){ tbody.innerHTML=''; if(empty) empty.style.display='block'; return; }
-  if(empty) empty.style.display='none';
-
-  tbody.innerHTML = prods.map(p=>`
-    <tr>
-      <td><span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text3)">${p.code}</span></td>
-      <td><b>${p.name}</b></td>
-      <td><span class="alias-tag" style="background:var(--accent-l);border-color:#BFCFEF;">${p.kategori||inferKategori(p)}</span></td>
-      <td>${p.unit}</td>
-      <td>Rp${p.harga.toLocaleString('id')}</td>
-      <td>${(p.alias||[]).map(a=>`<span class="alias-tag">${a}</span>`).join('')}</td>
-      <td>
-        <div style="display:flex;gap:5px;">
-          <button class="btn btn-o btn-xs" onclick="openProdModal('${prodBrandFilter}','${p.code}')">✏️</button>
-          <button class="btn btn-rd btn-xs" onclick="delProd('${prodBrandFilter}','${p.code}')">🗑</button>
-        </div>
-      </td>
-    </tr>
-  `).join('');
-}
-
-function setProdBrand(b){ prodBrandFilter=b; renderProduk(); }
-function setProdKat(k){ prodKatFilter=k; renderProduk(); }
-
-function openProdModal(brandKey=null, code=null){
-  pendingAliases = [];
-  if(brandKey && code){
-    const p = BRANDS[brandKey]?.products.find(x=>x.code===code);
-    if(!p) return;
-    editProdKey = {brandKey, code};
-    document.getElementById('prodModalTitle').textContent = 'Edit Produk — ' + BRANDS[brandKey].label;
-    document.getElementById('pm_code').value  = p.code;
-    document.getElementById('pm_name').value  = p.name;
-    document.getElementById('pm_unit').value  = p.unit;
-    document.getElementById('pm_harga').value = p.harga;
-    document.getElementById('pm_berat').value = p.berat||0;
-    document.getElementById('pm_kategori').value = p.kategori||inferKategori(p);
-    pendingAliases = [...(p.alias||[])];
-  } else {
-    editProdKey = null;
-    document.getElementById('prodModalTitle').textContent = 'Tambah Produk';
-    document.getElementById('pm_code').value  = '';
-    document.getElementById('pm_name').value  = '';
-    document.getElementById('pm_unit').value  = 'kg';
-    document.getElementById('pm_harga').value = '';
-    document.getElementById('pm_berat').value = '';
-    document.getElementById('pm_kategori').value = 'bahan baku';
-    pendingAliases = [];
-  }
-  document.getElementById('pm_alias_input').value = '';
-  renderAliasTags();
-  document.getElementById('prodModal').style.display='flex';
-}
-
-function closeProdModal(){ document.getElementById('prodModal').style.display='none'; }
-
-function aliasKeydown(e){
-  if(e.key==='Enter'||e.key===','){
-    e.preventDefault();
-    const val = e.target.value.replace(/,/g,'').trim().toLowerCase();
-    if(val && !pendingAliases.includes(val)){ pendingAliases.push(val); }
-    e.target.value='';
-    renderAliasTags();
-  }
-}
-
-function renderAliasTags(){
-  const el = document.getElementById('pm_alias_tags');
-  el.innerHTML = pendingAliases.map((a,i)=>`
-    <span style="display:inline-flex;align-items:center;gap:4px;background:var(--accent-l);border:1px solid #BFCFEF;border-radius:5px;padding:2px 7px;font-size:11px;">
-      ${a}
-      <span onclick="removeAlias(${i})" style="cursor:pointer;color:var(--red);font-weight:700;margin-left:2px;">✕</span>
-    </span>
-  `).join('');
-}
-
-function removeAlias(i){ pendingAliases.splice(i,1); renderAliasTags(); }
-
-function saveProdModal(){
-  const code  = document.getElementById('pm_code').value.trim().toUpperCase();
-  const name  = document.getElementById('pm_name').value.trim();
-  const unit  = document.getElementById('pm_unit').value;
-  const harga = parseInt(document.getElementById('pm_harga').value)||0;
-  const berat = parseInt(document.getElementById('pm_berat').value)||0;
-  const kategori = document.getElementById('pm_kategori').value;
-
-  // Flush any typed alias
-  const rawAlias = document.getElementById('pm_alias_input').value.trim().toLowerCase();
-  if(rawAlias && !pendingAliases.includes(rawAlias)) pendingAliases.push(rawAlias);
-
-  if(!code||!name||!harga){ toast('⚠️ Kode, Nama, dan Harga wajib diisi!'); return; }
-
-  // Determine target brand
-  let targetBrand = editProdKey ? editProdKey.brandKey : prodBrandFilter;
-
-  const prodData = { code, name, unit, harga, berat, kategori, alias: pendingAliases };
-
-  if(editProdKey){
-    const arr = BRANDS[editProdKey.brandKey].products;
-    const idx = arr.findIndex(x=>x.code===editProdKey.code);
-    if(idx>=0) arr[idx] = prodData;
-    else arr.push(prodData);
-  } else {
-    // Check duplicate code across this brand
-    const arr = BRANDS[targetBrand].products;
-    if(arr.find(x=>x.code===code)){ toast('⚠️ Kode produk sudah ada di brand ini!'); return; }
-    arr.push(prodData);
-  }
-
-  saveBrands();
-  closeProdModal();
-  renderProduk();
-  toast('✅ Produk tersimpan!');
-}
-
-function delProd(brandKey, code){
-  if(!confirm(`Hapus produk ${code} dari ${BRANDS[brandKey]?.label}?`)) return;
-  BRANDS[brandKey].products = BRANDS[brandKey].products.filter(p=>p.code!==code);
-  saveBrands();
-  renderProduk();
-  toast('🗑 Produk dihapus.');
-}
-
-// =========================================================
 // FUZZY MATCH
 // =========================================================
 function norm(s){ return s.toLowerCase().replace(/[^a-z0-9\s]/g,'').replace(/\s+/g,' ').trim(); }
@@ -1282,9 +1117,36 @@ function sim(a,b){
 }
 function findP(q){
   if(!curBrand) return null;
-  let best=null, bs=0;
   const qNorm = norm(q);
-  BRANDS[curBrand].products.forEach(p=>{
+  if(!qNorm) return null;
+  const products = BRANDS[curBrand].products;
+
+  // PRIORITAS 1 — Kode produk EXACT match (paling akurat, misal "NG-MM06")
+  // Cek baik di seluruh baris (q asli, sebelum di-strip qty) maupun di qNorm.
+  const qUpperNoSpace = q.toUpperCase().replace(/\s+/g,'');
+  for(const p of products){
+    const codeNorm = (p.code||'').toUpperCase().replace(/\s+/g,'');
+    if(codeNorm && (qUpperNoSpace===codeNorm || qUpperNoSpace.includes(codeNorm))){
+      return {p, score:1};
+    }
+  }
+
+  // PRIORITAS 2 — Alias EXACT match (alias yang sudah diset di Mitra & Produk harus menang duluan)
+  for(const p of products){
+    for(const a of (p.alias||[])){
+      const aNorm = norm(a);
+      if(aNorm && aNorm===qNorm) return {p, score:1};
+    }
+  }
+
+  // PRIORITAS 3 — Nama produk EXACT match
+  for(const p of products){
+    if(norm(p.name)===qNorm) return {p, score:0.98};
+  }
+
+  // PRIORITAS 4 — Fuzzy fallback (alias & nama, skor tertinggi menang)
+  let best=null, bs=0;
+  products.forEach(p=>{
     let s=sim(q,p.name); if(s>bs){bs=s;best=p;}
     (p.alias||[]).forEach(a=>{ const s2=sim(q,a); if(s2>bs){bs=s2;best=p;} });
   });
@@ -1401,6 +1263,9 @@ function normalizeUnit(raw){
 // =========================================================
 // ORDER STEPS
 // =========================================================
+const BRAND_ICON = {ngemiloh:'🍿',melumer:'🧁',gokuah:'🍜',yamie:'🍛',bacigor:'🥟'};
+let brandLocked = false; // true setelah user klik "Lanjut" di Step 1
+
 function goStep(n){
   for(let i=1;i<=4;i++){
     document.getElementById('os'+i).classList.toggle('active',i===n);
@@ -1417,15 +1282,96 @@ function goStep(n){
     const bb2=document.getElementById('bb2'); if(bb2) bb2.textContent=lbl;
     const bb3=document.getElementById('bb3'); if(bb3) bb3.textContent=lbl;
   }
+  // Kalau pindah ke step 2/3/4, brand otomatis terkunci (tidak bisa diubah lagi sampai eksplisit klik "Ubah Brand")
+  if(n>1 && curBrand) renderBrandLockUI(true);
+  // Step 4: kalau mode TF masih "sama dengan mitra", sinkronkan dengan nama mitra terbaru
+  if(n===4){
+    const sameBtn=document.getElementById('tfSameBtn');
+    if(sameBtn && sameBtn.classList.contains('active')){
+      const tfInput=document.getElementById('f_tf');
+      if(tfInput) tfInput.value=document.getElementById('f_nama')?.value||'';
+    }
+  }
   if(n===4){ calcFinal(); genOutput(); }
 }
 
 function selBrand(b){
+  if(brandLocked) return; // brand sudah dikunci, harus klik "Ubah Brand" dulu
   curBrand=b;
   document.querySelectorAll('.bb').forEach(e=>e.classList.remove('selected'));
   document.querySelector('.brand-'+b)?.classList.add('selected');
   document.getElementById('bb2').textContent=BRANDS[b].label;
   document.getElementById('bb3').textContent=BRANDS[b].label;
+}
+
+// Toggle "Nama Pengirim TF": sama dengan nama mitra (auto, readonly) atau manual (beda orang yang transfer)
+function setTfMode(mode){
+  const sameBtn=document.getElementById('tfSameBtn');
+  const diffBtn=document.getElementById('tfDiffBtn');
+  const tfInput=document.getElementById('f_tf');
+  if(!sameBtn||!diffBtn||!tfInput) return;
+  if(mode==='same'){
+    sameBtn.classList.add('active'); diffBtn.classList.remove('active');
+    tfInput.readOnly=true;
+    tfInput.value=document.getElementById('f_nama')?.value||'';
+    tfInput.placeholder='Otomatis sama dengan nama mitra';
+  } else {
+    diffBtn.classList.add('active'); sameBtn.classList.remove('active');
+    tfInput.readOnly=false;
+    tfInput.placeholder='Nama sesuai rekening';
+    tfInput.focus();
+  }
+  genOutput();
+}
+
+// Kunci pilihan brand & lanjut ke step 2. Brand tidak bisa diganti lagi sampai user
+// eksplisit klik "Ubah Brand" (yang akan mereset order yang sedang diisi).
+function confirmStep1(){
+  if(!curBrand){ toast('⚠️ Pilih brand dulu!'); return; }
+  renderBrandLockUI(true);
+  goStep(2);
+}
+
+function renderBrandLockUI(locked){
+  brandLocked = locked;
+  const pickGrid = document.getElementById('brandPickGrid');
+  const lockedBox = document.getElementById('brandLockedBox');
+  if(!pickGrid || !lockedBox) return;
+  if(locked && curBrand && BRANDS[curBrand]){
+    pickGrid.style.display='none';
+    lockedBox.style.display='flex';
+    document.getElementById('brandLockedIcon').textContent = BRAND_ICON[curBrand]||'🏷️';
+    document.getElementById('brandLockedName').textContent = BRANDS[curBrand].label;
+  } else {
+    pickGrid.style.display='grid';
+    lockedBox.style.display='none';
+  }
+}
+
+// User eksplisit minta ganti brand — reset order yang sedang diisi supaya tidak ada data nyasar antar brand
+function unlockBrand(){
+  if(items.length && !confirm('Ganti brand akan mengosongkan item yang sudah dideteksi di order ini. Lanjutkan?')) return;
+  curBrand=null;
+  items=[];
+  document.querySelectorAll('.bb').forEach(e=>e.classList.remove('selected'));
+  renderBrandLockUI(false);
+  goStep(1);
+}
+
+// Cari kode produk yang disebut persis di sebuah baris teks (mis. "NG-MM06 x3" atau "[NG-MM06] - Nama - 3 - Rp.x")
+// Kode produk minimal 3 karakter agar tidak salah tangkap kata umum pendek.
+function findProductCodeInLine(line){
+  if(!curBrand || !BRANDS[curBrand]) return null;
+  const lineUpper = line.toUpperCase();
+  let found=null, foundLen=0;
+  BRANDS[curBrand].products.forEach(p=>{
+    const code=(p.code||'').toUpperCase();
+    if(code.length<3) return;
+    // Cocok sebagai kata/token tersendiri (dibatasi non-alfanumerik atau ujung baris), bukan substring acak
+    const re=new RegExp('(^|[^A-Z0-9])'+code.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'($|[^A-Z0-9])');
+    if(re.test(lineUpper) && code.length>foundLen){ found=p; foundLen=code.length; }
+  });
+  return found;
 }
 
 function parseOrder(){
@@ -1481,8 +1427,13 @@ function parseOrder(){
 
     let best=null;
 
+    // 0. PRIORITAS TERTINGGI — kode produk persis disebut di baris ini (mis. "NG-MM06 x3", "[NG-MM06] - ... - 3")
+    //    Kode produk adalah penanda paling akurat, jadi langsung dipakai tanpa melalui logic kategori/fuzzy/ambigu.
+    const codeHitInLine = findProductCodeInLine(line);
+    if(codeHitInLine) best = {p:codeHitInLine, score:1};
+
     // 1. Coba dengan konteks kategori (lebih spesifik, ambil kata pertama)
-    if(categoryCtx){
+    if(!best && categoryCtx){
       const catWord=categoryCtx.split(/\s+/)[0];
       const combined=catWord+' '+str;
       const rC=findP(combined);
@@ -1497,7 +1448,8 @@ function parseOrder(){
 
     // 3. Strict: kalau query terlalu umum tanpa konteks → tidak ditemukan
     //    Contoh: "bumbu tabur" → matches 10+ produk → ambiguous → NOT FOUND
-    if(best && best.score<0.85 && !categoryCtx && isTooGeneric(str)){
+    //    (tidak berlaku jika sudah match exact via kode/alias, score===1)
+    if(best && best.score<0.85 && best.score!==1 && !categoryCtx && isTooGeneric(str)){
       best=null;
     }
 
@@ -1646,13 +1598,20 @@ function calcFinal(){
     if(dp) dp.textContent='';
   }
 
-  // Total porsi (Gokuah, Yamie, Bacigor — semua brand dengan unit pcs)
+  // Total porsi (Gokuah, Yamie, Bacigor — semua brand dengan unit pcs) — tampil di Step 3 dan Step 4
   const porsiEl=document.getElementById('sumPorsi');
   if(porsiEl){
     if(totalPcs>0){
       porsiEl.style.display='flex';
       document.getElementById('sumPorsiVal').textContent=totalPcs.toLocaleString('id')+' porsi bahan baku';
     } else porsiEl.style.display='none';
+  }
+  const fPorsiEl=document.getElementById('fPorsi');
+  if(fPorsiEl){
+    if(totalPcs>0){
+      fPorsiEl.style.display='flex';
+      document.getElementById('fPorsiVal').textContent=totalPcs.toLocaleString('id')+' porsi bahan baku';
+    } else fPorsiEl.style.display='none';
   }
 }
 function isPorsiItem(p){
@@ -1767,8 +1726,14 @@ function fillMitraFromDB(id){
   document.getElementById('f_nama').value   = m.nama||'';
   document.getElementById('f_telp').value   = m.telp||'';
   document.getElementById('f_alamat').value = m.alamat||'';
-  const s4tf=document.getElementById('f_tf'); if(s4tf) s4tf.value=m.tf||'';
   const s4eksp=document.getElementById('f_eksp'); if(s4eksp && m.eksp) setSelVal(s4eksp, m.eksp);
+  // TF: kalau tersimpan beda dari nama mitra, pakai mode manual; kalau tidak ada/cocok, mode "sama mitra"
+  if(m.tf && m.tf.trim() && m.tf.trim()!==(m.nama||'').trim()){
+    setTfMode('diff');
+    document.getElementById('f_tf').value = m.tf;
+  } else {
+    setTfMode('same');
+  }
   if(m.brand) selBrand(m.brand);
   document.getElementById('mitraSearch').value='';
   hideMitraDD();
@@ -1924,6 +1889,8 @@ function startNew(){
   document.getElementById('formOut').textContent='—';
   document.getElementById('mitraOut').textContent='—';
   document.querySelectorAll('.bb').forEach(e=>e.classList.remove('selected'));
+  renderBrandLockUI(false);
+  setTfMode('same');
   goStep(1); showTab('order');
 }
 
@@ -1970,11 +1937,17 @@ function loadDraft(id){
   // Step 4 fields
   const s4eksp=document.getElementById('f_eksp'); if(s4eksp){ setSelVal(s4eksp, d.eksp||''); }
   const s4pay=document.getElementById('f_pay');   if(s4pay){  setSelVal(s4pay,  d.pay||''); }
-  const s4tf=document.getElementById('f_tf');     if(s4tf)    s4tf.value=d.tf||'';
+  if(d.tf && d.tf.trim() && d.tf.trim()!==(d.nama||'').trim()){
+    setTfMode('diff');
+    document.getElementById('f_tf').value = d.tf;
+  } else {
+    setTfMode('same');
+  }
   document.getElementById('ongkir').value   = d.ongkir||0;
   document.getElementById('waText').value   = d.waText||'';
   document.querySelectorAll('.bb').forEach(e=>e.classList.remove('selected'));
   if(curBrand){ document.querySelector('.brand-'+curBrand)?.classList.add('selected'); document.getElementById('bb2').textContent=BRANDS[curBrand].label; document.getElementById('bb3').textContent=BRANDS[curBrand].label; }
+  renderBrandLockUI(!!curBrand);
   renderTable();
   const step=items.filter(i=>!i.removed&&i.product).length>0?4:1;
   goStep(step);
@@ -2926,21 +2899,19 @@ function resetEksp(){
 async function init() {
   updateEkspDropdowns(); // sinkron dropdown dengan data tersimpan
   setDateRange('all'); // render drafts + set filter tanggal default
-  updCount(); updMitraCount(); renderProduk();
+  updCount(); updMitraCount();
 
   // Sinkronisasi draft order dengan Supabase (semua laptop)
   updateSyncBadge();
   await pullDraftsFromCloud();
   startPolling();
 
-  // Sinkronisasi mitra & produk — dibagikan ke CS FU & Admin juga
+  // Sinkronisasi mitra & produk — produk SELALU dari tools "Mitra & Produk" (sumber tunggal)
   setSyncStatus('loading', 'Menghubungkan ke database...');
   await loadMitraSync();
-  setSyncStatus('loading', 'Memuat produk...');
   try {
     const loadedBrands = await loadBrandsSync();
     BRANDS = normalizeBrandProducts(loadedBrands);
-    renderProduk();
     setSyncStatus('ok', '✓ Semua data tersinkron');
   } catch(e) {
     setSyncStatus('error', 'Produk pakai data lokal: ' + e.message);
@@ -2949,8 +2920,20 @@ async function init() {
   // Sinkronisasi daftar ekspedisi
   await loadEkspListRemote();
 
-  // Polling produk & mitra tiap 15 detik (lebih jarang dari draft karena lebih berat)
-  setInterval(()=>{ if(!curBrand){ loadMitraSync(); } }, 15000);
+  // Polling ringan tiap 30 detik — skip total saat user sedang mengisi form order (curBrand aktif)
+  // supaya tidak membanjiri koneksi & tidak mengganggu input yang sedang berjalan.
+  setInterval(async ()=>{
+    if(curBrand) return; // sedang mengisi order, jangan ganggu
+    try{
+      const prevBrandsJSON = JSON.stringify(BRANDS);
+      await loadMitraSync();
+      const rb = await loadBrandsSync();
+      if(rb){
+        const merged = normalizeBrandProducts(rb);
+        if(JSON.stringify(merged)!==prevBrandsJSON) BRANDS = merged;
+      }
+    }catch(e){ /* loadMitraSync/loadBrandsSync sudah handle status sendiri */ }
+  }, 30000);
 }
 init();
 </script>
