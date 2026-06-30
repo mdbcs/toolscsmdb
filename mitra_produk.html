@@ -147,10 +147,16 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
       <button class="btn btn-p btn-sm" onclick="openMitraModal()">+ Tambah Mitra</button>
     </div>
   </div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;">
+      <input type="checkbox" id="mitraSelectAll" onchange="toggleSelectAllMitra(this)" style="width:16px;height:16px;"> Pilih semua yang tampil
+    </label>
+    <button class="btn btn-rd btn-sm" onclick="hapusMassalMitra()">🗑 Hapus Massal (<span id="mitraSelCount">0</span>)</button>
+  </div>
   <div class="card" style="padding:0;overflow:hidden;">
     <div style="overflow-x:auto;">
       <table class="mdb-table">
-        <thead><tr><th>Kode</th><th>Nama</th><th>No Telp</th><th>Brand</th><th>Ekspedisi</th><th>Alamat</th><th></th></tr></thead>
+        <thead><tr><th style="width:34px;"></th><th>Kode</th><th>Nama</th><th>No Telp</th><th>Brand</th><th>Ekspedisi</th><th>Alamat</th><th></th></tr></thead>
         <tbody id="mitraDBBody"></tbody>
       </table>
     </div>
@@ -176,10 +182,17 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
   <div class="btabs" id="prodBrandTabs"></div>
   <div class="btabs" id="prodKatTabs"></div>
 
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;">
+      <input type="checkbox" id="prodSelectAll" onchange="toggleSelectAllProd(this)" style="width:16px;height:16px;"> Pilih semua yang tampil
+    </label>
+    <button class="btn btn-rd btn-sm" onclick="hapusMassalProduk()">🗑 Hapus Massal (<span id="prodSelCount">0</span>)</button>
+  </div>
+
   <div class="card" style="padding:0;overflow:hidden;">
     <div style="overflow-x:auto;">
       <table class="prod-table">
-        <thead><tr><th>Kode</th><th>Nama Produk</th><th>Kategori</th><th>Satuan</th><th>Harga</th><th>Alias / Keyword</th><th></th></tr></thead>
+        <thead><tr><th style="width:34px;"></th><th>Kode</th><th>Nama Produk</th><th>Kategori</th><th>Satuan</th><th>Harga</th><th>Alias / Keyword</th><th></th></tr></thead>
         <tbody id="prodTableBody"></tbody>
       </table>
     </div>
@@ -519,10 +532,14 @@ function renderMitraDB(){
   const list=q?mitraDB.filter(m=>m.nama.toLowerCase().includes(q)||m.kode.toLowerCase().includes(q)):mitraDB;
   const body=document.getElementById('mitraDBBody');
   const empty=document.getElementById('mitraEmpty');
-  if(!list.length){body.innerHTML='';empty.style.display='block';return;}
+  // buang seleksi untuk mitra yang sudah tidak ada lagi di database
+  const validIds=new Set(mitraDB.map(m=>m.id));
+  mitraSelected.forEach(id=>{ if(!validIds.has(id)) mitraSelected.delete(id); });
+  if(!list.length){body.innerHTML='';empty.style.display='block';updMitraSelCount();return;}
   empty.style.display='none';
   body.innerHTML=list.map(m=>`
     <tr>
+      <td><input type="checkbox" data-id="${m.id}" ${mitraSelected.has(m.id)?'checked':''} onchange="toggleMitraSelect('${m.id}',this.checked)" style="width:16px;height:16px;cursor:pointer;"></td>
       <td><b style="font-family:'DM Mono',monospace;font-size:12px;">${m.kode}</b></td>
       <td>${m.nama}</td>
       <td style="font-size:12px;color:var(--text2)">${m.telp||'—'}</td>
@@ -534,6 +551,50 @@ function renderMitraDB(){
         <button class="btn btn-rd btn-xs" onclick="delMitra('${m.id}')">🗑</button>
       </div></td>
     </tr>`).join('');
+  updMitraSelCount();
+}
+
+// =========================================================
+// HAPUS MASSAL — MITRA
+// =========================================================
+let mitraSelected = new Set();
+
+function toggleMitraSelect(id, checked){
+  if(checked) mitraSelected.add(id); else mitraSelected.delete(id);
+  updMitraSelCount();
+}
+
+function updMitraSelCount(){
+  const c=document.getElementById('mitraSelCount');
+  if(c) c.textContent=mitraSelected.size;
+  const selAll=document.getElementById('mitraSelectAll');
+  const boxes=document.querySelectorAll('#mitraDBBody input[type=checkbox]');
+  if(selAll) selAll.checked = boxes.length>0 && Array.from(boxes).every(b=>b.checked);
+}
+
+function toggleSelectAllMitra(checkboxEl){
+  document.querySelectorAll('#mitraDBBody input[type=checkbox]').forEach(b=>{
+    b.checked=checkboxEl.checked;
+    const id=b.getAttribute('data-id');
+    if(checkboxEl.checked) mitraSelected.add(id); else mitraSelected.delete(id);
+  });
+  updMitraSelCount();
+}
+
+async function hapusMassalMitra(){
+  if(!mitraSelected.size){ toast('⚠️ Pilih mitra yang mau dihapus dulu!'); return; }
+  const ids=[...mitraSelected];
+  if(!confirm(`Hapus ${ids.length} mitra terpilih? Tindakan ini tidak bisa dibatalkan.`)) return;
+  toast(`⏳ Menghapus ${ids.length} mitra...`);
+  mitraDB=mitraDB.filter(x=>!ids.includes(x.id));
+  mitraSelected.clear();
+  renderMitraDB();updMitraCount();
+  try{
+    await Promise.all(ids.map(id=>deleteMitraRemote(id)));
+    toast(`🗑 ${ids.length} mitra dihapus & tersinkron!`);
+  }catch(e){
+    toast('⚠️ Sebagian mitra gagal terhapus dari server: '+e.message);
+  }
 }
 
 function searchMitra(q){
@@ -604,6 +665,7 @@ function saveMitraModal(){
 function delMitra(id){
   if(!confirm('Hapus mitra ini?')) return;
   mitraDB=mitraDB.filter(x=>x.id!==id);
+  mitraSelected.delete(id);
   deleteMitraRemote(id);renderMitraDB();updMitraCount();
   toast('🗑 Mitra dihapus.');
 }
@@ -915,11 +977,14 @@ function renderProduk(){
   const empty = document.getElementById('prodEmpty');
 
 
-  if(!prods.length){ tbody.innerHTML=''; empty.style.display='block'; return; }
+  if(!prods.length){ tbody.innerHTML=''; empty.style.display='block'; updProdSelCount(); return; }
   empty.style.display='none';
 
-  tbody.innerHTML = prods.map(p=>`
+  tbody.innerHTML = prods.map(p=>{
+    const key=prodBrandFilter+'::'+p.code;
+    return `
     <tr>
+      <td><input type="checkbox" data-key="${key}" ${prodSelected.has(key)?'checked':''} onchange="toggleProdSelect('${key}',this.checked)" style="width:16px;height:16px;cursor:pointer;"></td>
       <td><span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text3)">${p.code}</span></td>
       <td><b>${p.name}</b></td>
       <td><span class="alias-tag" style="background:var(--accent-l);border-color:#BFCFEF;">${p.kategori||inferKategori(p)}</span></td>
@@ -933,7 +998,8 @@ function renderProduk(){
         </div>
       </td>
     </tr>
-  `).join('');
+  `;}).join('');
+  updProdSelCount();
 }
 
 function setProdBrand(b){ prodBrandFilter=b; renderProduk(); }
@@ -1012,9 +1078,59 @@ function saveProdModal(){
 function delProd(brandKey, code){
   if(!confirm(`Hapus produk ${code} dari ${BRANDS[brandKey]?.label}?`)) return;
   BRANDS[brandKey].products = BRANDS[brandKey].products.filter(p=>p.code!==code);
+  prodSelected.delete(brandKey+'::'+code);
   saveBrands();
   renderProduk();
   toast('🗑 Produk dihapus.');
+}
+
+// =========================================================
+// HAPUS MASSAL — PRODUK
+// =========================================================
+let prodSelected = new Set(); // isi: "brandKey::kodeProduk"
+
+function toggleProdSelect(key, checked){
+  if(checked) prodSelected.add(key); else prodSelected.delete(key);
+  updProdSelCount();
+}
+
+function updProdSelCount(){
+  const c=document.getElementById('prodSelCount');
+  if(c) c.textContent=prodSelected.size;
+  const selAll=document.getElementById('prodSelectAll');
+  const boxes=document.querySelectorAll('#prodTableBody input[type=checkbox]');
+  if(selAll) selAll.checked = boxes.length>0 && Array.from(boxes).every(b=>b.checked);
+}
+
+function toggleSelectAllProd(checkboxEl){
+  document.querySelectorAll('#prodTableBody input[type=checkbox]').forEach(b=>{
+    b.checked=checkboxEl.checked;
+    const key=b.getAttribute('data-key');
+    if(checkboxEl.checked) prodSelected.add(key); else prodSelected.delete(key);
+  });
+  updProdSelCount();
+}
+
+async function hapusMassalProduk(){
+  if(!prodSelected.size){ toast('⚠️ Pilih produk yang mau dihapus dulu!'); return; }
+  const byBrand={};
+  prodSelected.forEach(key=>{
+    const idx=key.indexOf('::');
+    const brand=key.slice(0,idx), code=key.slice(idx+2);
+    (byBrand[brand]=byBrand[brand]||[]).push(code);
+  });
+  const total=prodSelected.size;
+  if(!confirm(`Hapus ${total} produk terpilih? Tindakan ini tidak bisa dibatalkan.`)) return;
+  for(const brand in byBrand){
+    if(!BRANDS[brand]) continue;
+    const codes=byBrand[brand];
+    BRANDS[brand].products=(BRANDS[brand].products||[]).filter(p=>!codes.includes(p.code));
+  }
+  prodSelected.clear();
+  renderProduk();
+  toast(`⏳ Menghapus ${total} produk...`);
+  await saveBrands();
+  toast(`🗑 ${total} produk dihapus & tersinkron!`);
 }
 
 function removeAlias(i){ pendingAliases.splice(i,1); renderAliasTags(); }
