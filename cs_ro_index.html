@@ -680,9 +680,137 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <button class="btn btn-o btn-sm" onclick="resetEksp()" style="color:var(--warn);border-color:var(--warn);">↺ Reset ke Default</button>
     </div>
   </div>
+
+  <div class="card">
+    <div class="card-title">📦 Kelola Produk</div>
+    <div class="al al-w" style="margin-bottom:12px;">
+      ⚠️ Produk di sini tersinkron dengan tools "Mitra &amp; Produk". Menghapus produk (satuan / massal) di sini akan ikut menghapus dari sumber data bersama.
+    </div>
+
+    <div class="frow" style="margin-bottom:10px;">
+      <div class="fg"><label>Brand</label>
+        <select id="prodSettingBrand" onchange="renderProdukSetting()"></select>
+      </div>
+      <div class="fg"><label>Cari Produk</label>
+        <input type="text" id="prodSettingSearch" placeholder="Cari kode atau nama produk..." oninput="renderProdukSetting()">
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;">
+        <input type="checkbox" id="prodSelectAll" onchange="toggleSelectAllProduk(this)" style="width:16px;height:16px;"> Pilih semua yang tampil
+      </label>
+      <button class="btn btn-rd btn-sm" onclick="hapusMassalProduk()">🗑 Hapus Massal (<span id="prodSelCount">0</span>)</button>
+    </div>
+
+    <div id="prodSettingList" style="display:flex;flex-direction:column;gap:6px;max-height:440px;overflow-y:auto;"></div>
+  </div>
 </div>
 
 </div><!-- /wrap -->
+
+<script>
+// =========================================================
+// KELOLA PRODUK — pilih & hapus (satuan / massal)
+// =========================================================
+let prodSelected = new Set(); // isi: "brandKey::kodeProduk"
+
+function populateProdSettingBrandDropdown(){
+  const sel = document.getElementById('prodSettingBrand');
+  if(!sel) return;
+  const cur = sel.value;
+  const keys = Object.keys(BRANDS);
+  sel.innerHTML = keys.map(k=>`<option value="${k}" ${k===cur?'selected':''}>${BRANDS[k].label||k}</option>`).join('');
+  if(!cur && keys.length) sel.value = keys[0];
+}
+
+function renderProdukSetting(){
+  const selBrand = document.getElementById('prodSettingBrand');
+  if(!selBrand) return;
+  if(!selBrand.options.length) populateProdSettingBrandDropdown();
+  const brand = selBrand.value;
+  const q = (document.getElementById('prodSettingSearch')?.value||'').toLowerCase().trim();
+  const el = document.getElementById('prodSettingList');
+  if(!el) return;
+  if(!brand || !BRANDS[brand]){ el.innerHTML=''; updateProdSelCount(); return; }
+  let prods = (BRANDS[brand].products||[]).slice();
+  if(q) prods = prods.filter(p=>(p.code||'').toLowerCase().includes(q)||(p.name||'').toLowerCase().includes(q));
+  if(!prods.length){
+    el.innerHTML='<div style="color:var(--text3);font-size:13px;text-align:center;padding:20px;">Tidak ada produk ditemukan.</div>';
+    updateProdSelCount();
+    return;
+  }
+  el.innerHTML = prods.map(p=>{
+    const key = brand+'::'+p.code;
+    const checked = prodSelected.has(key) ? 'checked' : '';
+    const codeAttr = String(p.code).replace(/'/g,"\\'");
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--s2);border:1px solid var(--border);border-radius:var(--r);">
+      <input type="checkbox" data-key="${key}" onchange="toggleProdukSelect('${key}',this.checked)" ${checked} style="width:16px;height:16px;flex-shrink:0;cursor:pointer;">
+      <span style="font-family:'DM Mono',monospace;font-size:12px;font-weight:700;min-width:90px;">[${p.code}]</span>
+      <span style="flex:1;font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}</span>
+      <span style="font-size:12px;color:var(--text3);white-space:nowrap;">Rp${(p.harga||0).toLocaleString('id')}/${p.unit||'pcs'}</span>
+      <button class="btn btn-rd btn-xs" onclick="hapusSatuProduk('${brand}','${codeAttr}')" title="Hapus produk ini">🗑</button>
+    </div>`;
+  }).join('');
+  updateProdSelCount();
+}
+
+function toggleProdukSelect(key, checked){
+  if(checked) prodSelected.add(key); else prodSelected.delete(key);
+  updateProdSelCount();
+}
+
+function updateProdSelCount(){
+  const c = document.getElementById('prodSelCount');
+  if(c) c.textContent = prodSelected.size;
+  const selAll = document.getElementById('prodSelectAll');
+  const boxes = document.querySelectorAll('#prodSettingList input[type=checkbox]');
+  if(selAll) selAll.checked = boxes.length>0 && Array.from(boxes).every(b=>b.checked);
+}
+
+function toggleSelectAllProduk(checkboxEl){
+  document.querySelectorAll('#prodSettingList input[type=checkbox]').forEach(b=>{
+    b.checked = checkboxEl.checked;
+    const key = b.getAttribute('data-key');
+    if(checkboxEl.checked) prodSelected.add(key); else prodSelected.delete(key);
+  });
+  updateProdSelCount();
+}
+
+async function hapusSatuProduk(brand, code){
+  const p = (BRANDS[brand]?.products||[]).find(x=>x.code===code);
+  if(!p) return;
+  if(!confirm(`Hapus produk "[${code}] ${p.name}" dari brand ${BRANDS[brand].label}?\n\nProduk akan ikut terhapus dari tools "Mitra & Produk".`)) return;
+  BRANDS[brand].products = BRANDS[brand].products.filter(x=>x.code!==code);
+  prodSelected.delete(brand+'::'+code);
+  await saveBrands();
+  try{ await deleteProdukRemote(brand, code); }catch(e){}
+  renderProdukSetting();
+  toast('🗑 '+code+' dihapus.');
+}
+
+async function hapusMassalProduk(){
+  if(!prodSelected.size){ toast('⚠️ Pilih produk yang mau dihapus dulu!'); return; }
+  const byBrand = {};
+  prodSelected.forEach(key=>{
+    const idx = key.indexOf('::');
+    const brand = key.slice(0,idx), code = key.slice(idx+2);
+    (byBrand[brand] = byBrand[brand]||[]).push(code);
+  });
+  const total = prodSelected.size;
+  if(!confirm(`Hapus ${total} produk terpilih?\n\nProduk akan ikut terhapus dari tools "Mitra & Produk" dan tidak bisa dibatalkan.`)) return;
+  for(const brand in byBrand){
+    if(!BRANDS[brand]) continue;
+    const codes = byBrand[brand];
+    BRANDS[brand].products = (BRANDS[brand].products||[]).filter(p=>!codes.includes(p.code));
+    try{ await deleteProdukBulkRemote(brand, codes); }catch(e){}
+  }
+  await saveBrands();
+  prodSelected.clear();
+  renderProdukSetting();
+  toast('🗑 '+total+' produk dihapus.');
+}
+</script>
 
 <script>
 // =========================================================
@@ -1097,7 +1225,7 @@ function showTab(t){
   if(t==='drafts')  renderDrafts();
   if(t==='rekap')   fillRekapSel();
   if(t==='cetak')   renderCetakList();
-  if(t==='setting') renderEkspSetting();
+  if(t==='setting'){ renderEkspSetting(); populateProdSettingBrandDropdown(); renderProdukSetting(); }
 }
 
 // =========================================================
@@ -1688,7 +1816,7 @@ function genOutput(){
     const sub=i.product.harga*qty;
     const u=normalizeUnit(i.product.unit||'');
     const uStr=u==='pcs'?'':' '+u;
-    fl.push(`${i.product.code} - ${i.product.name} - ${qty}${uStr} - Rp.${sub.toLocaleString('id')}`);
+    fl.push(`[${i.product.code}] - ${i.product.name} - ${qty}${uStr} - Rp.${sub.toLocaleString('id')}`);
   });
   fl.push('');
   const target=document.getElementById('discountTarget')?.value||'bb';
@@ -2653,7 +2781,7 @@ function copyFormWA(id){
   lines.push(`Alamat : ${d.alamat||'—'}`);
   lines.push('');
   lines.push('Rincian orderan bahan baku :');
-  aktif.forEach(i=>{const qty=parseFloat(i.qty)||0;const sub=i.product.harga*qty;total+=sub;lines.push(`${i.product.code} - ${i.product.name} - ${qty}${i.product.unit!=='pcs'?' '+i.product.unit:''} - Rp.${sub.toLocaleString('id')}`);});
+  aktif.forEach(i=>{const qty=parseFloat(i.qty)||0;const sub=i.product.harga*qty;total+=sub;lines.push(`[${i.product.code}] - ${i.product.name} - ${qty}${i.product.unit!=='pcs'?' '+i.product.unit:''} - Rp.${sub.toLocaleString('id')}`);});
   const og=parseInt(d.ongkir)||0;
   const diskonTargetWA = d.diskonTarget||'bb';
   const diskonWA=(()=>{
@@ -3003,6 +3131,7 @@ async function init() {
   const loadedBrands = await loadBrandsSync(); // fungsi ini sudah set status sendiri (ok/error+alasan)
   BRANDS = normalizeBrandProducts(loadedBrands);
   applyBrandVisibility();
+  populateProdSettingBrandDropdown();
 
   // Sinkronisasi daftar ekspedisi
   await loadEkspListRemote();

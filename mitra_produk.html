@@ -674,18 +674,30 @@ function showXlPreview(){
   if(!xlParsed.length){toast('⚠️ Tidak ada data valid');return;}
   const total=xlParsed.length,valid=xlParsed.filter(r=>r.kode&&r.nama).length;
   const invalid=total-valid,dupDB=xlParsed.filter(r=>mitraDB.find(m=>m.kode===r.kode)).length;
+  // Deteksi kode yang muncul lebih dari sekali DI DALAM file Excel itu sendiri (bukan vs database).
+  // Ini penting dideteksi karena baris dengan kode sama akan otomatis digabung jadi satu saat import,
+  // jadi user perlu tahu sejak preview kalau datanya punya duplikat internal.
+  const kodeCountInFile={};
+  xlParsed.forEach(r=>{ if(r.kode) kodeCountInFile[r.kode]=(kodeCountInFile[r.kode]||0)+1; });
+  const dupInFileKodes=Object.keys(kodeCountInFile).filter(k=>kodeCountInFile[k]>1);
+  const dupInFileRows=dupInFileKodes.reduce((sum,k)=>sum+kodeCountInFile[k],0);
   document.getElementById('xlStat').innerHTML=`
     <div class="xl-stat-item"><b>${total}</b><span>Total</span></div>
     <div class="xl-stat-item"><b style="color:var(--green)">${valid}</b><span>Valid</span></div>
     ${invalid?`<div class="xl-stat-item"><b style="color:var(--red)">${invalid}</b><span>Tidak lengkap</span></div>`:''}
-    ${dupDB?`<div class="xl-stat-item"><b style="color:var(--warn)">${dupDB}</b><span>Duplikat</span></div>`:''}`;
+    ${dupDB?`<div class="xl-stat-item"><b style="color:var(--warn)">${dupDB}</b><span>Duplikat vs DB</span></div>`:''}
+    ${dupInFileKodes.length?`<div class="xl-stat-item"><b style="color:var(--red)">${dupInFileKodes.length}</b><span>Kode dobel di file (${dupInFileRows} baris)</span></div>`:''}`;
   const warnEl=document.getElementById('xlWarn');
-  if(invalid){warnEl.style.display='flex';warnEl.textContent=`⚠️ ${invalid} baris tidak lengkap — akan dilewati.`;}
+  let warnMsgs=[];
+  if(invalid) warnMsgs.push(`${invalid} baris tidak lengkap — akan dilewati.`);
+  if(dupInFileKodes.length) warnMsgs.push(`${dupInFileKodes.length} kode mitra muncul lebih dari sekali di file ini (total ${dupInFileRows} baris) — baris dengan kode sama akan otomatis digabung jadi satu data (data terakhir yang dipakai).`);
+  if(warnMsgs.length){warnEl.style.display='flex';warnEl.textContent=`⚠️ ${warnMsgs.join(' ')}`;}
   else{warnEl.style.display='none';}
   document.getElementById('xlHead').innerHTML='<tr>'+XL_COLS.map(c=>`<th>${c}</th>`).join('')+'<th>Status</th></tr>';
   document.getElementById('xlBody').innerHTML=xlParsed.slice(0,50).map(r=>{
     const isValid=r.kode&&r.nama,isDupDB=!!mitraDB.find(m=>m.kode===r.kode);
-    const status=!isValid?`<span style="color:var(--red)">⚠ Tidak lengkap</span>`:isDupDB?`<span style="color:var(--warn)">⚡ Duplikat</span>`:`<span style="color:var(--green)">✓ Baru</span>`;
+    const isDupInFile=r.kode&&kodeCountInFile[r.kode]>1;
+    const status=!isValid?`<span style="color:var(--red)">⚠ Tidak lengkap</span>`:isDupInFile?`<span style="color:var(--red)">⚠ Dobel di file (${kodeCountInFile[r.kode]}x)</span>`:isDupDB?`<span style="color:var(--warn)">⚡ Duplikat vs DB</span>`:`<span style="color:var(--green)">✓ Baru</span>`;
     return`<tr><td>${r.kode||'—'}</td><td>${r.nama||'—'}</td><td>${r.telp||'—'}</td><td style="max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.alamat||'—'}</td><td>${r.eksp||'—'}</td><td>${r.brand||'—'}</td><td>${status}</td></tr>`;
   }).join('');
   document.getElementById('xlPreview').style.display='block';
@@ -722,29 +734,46 @@ function parseXlFile(file){
 async function doImport(){
   const mode=document.getElementById('xlDupMode').value;
   let added=0,updated=0,skipped=0;
-  const toSync=[];
   xlParsed.forEach(r=>{
     if(!r.kode||!r.nama){skipped++;return;}
     const brandKey=BRAND_MAP[(r.brand||'').toLowerCase()]||'';
     const existing=mitraDB.find(m=>m.kode===r.kode);
-    const data={id:existing?.id||Date.now().toString()+Math.random().toString(36).slice(2,6),kode:r.kode,nama:r.nama,telp:r.telp,alamat:r.alamat,eksp:r.eksp,brand:brandKey,tf:existing?.tf||''};
     if(existing){
-      if(mode==='update'){Object.assign(existing,data);updated++;toSync.push(data);}
-      else{skipped++;}
+      if(mode==='update'){
+        existing.nama=r.nama; existing.telp=r.telp; existing.alamat=r.alamat; existing.eksp=r.eksp; existing.brand=brandKey;
+        updated++;
+      } else { skipped++; }
     } else {
-      mitraDB.unshift(data);added++;toSync.push(data);
+      const data={id:Date.now().toString()+Math.random().toString(36).slice(2,8),kode:r.kode,nama:r.nama,telp:r.telp,alamat:r.alamat,eksp:r.eksp,brand:brandKey,tf:''};
+      mitraDB.unshift(data); added++;
     }
   });
+
+  // Bangun ulang toSync dari state mitraDB FINAL (bukan dari proses per-baris) supaya bebas dari
+  // duplikat akibat banyak baris Excel merujuk kode mitra yang sama — setiap kode hanya dikirim
+  // SEKALI dengan data paling terbaru. Field tf TIDAK dikirim (kolom tidak ada di tabel cs_ro_mitra).
+  const importedKodes = new Set(xlParsed.map(r=>r.kode).filter(Boolean));
+  const toSyncMap = new Map();
+  mitraDB.forEach(m=>{
+    if(importedKodes.has(m.kode)){
+      toSyncMap.set(m.id, {id:m.id, kode:m.kode, nama:m.nama, telp:m.telp||'', alamat:m.alamat||'', eksp:m.eksp||'', brand:m.brand||''});
+    }
+  });
+  const toSync = Array.from(toSyncMap.values());
 
   // Simpan cache lokal dulu supaya UI langsung update
   localStorage.setItem('mitraDB', JSON.stringify(mitraDB));
   updMitraCount(); renderMitraDB(); closeXlModal();
-  toast(`⏳ Import: +${added} baru, ${updated} diperbarui, ${skipped} dilewati — menyinkronkan ${toSync.length} baris ke server...`);
+  toast(`⏳ Import: +${added} baru, ${updated} diperbarui, ${skipped} dilewati — menyinkronkan ${toSync.length} baris unik ke server...`);
 
   // Sinkronkan dalam batch (jauh lebih cepat dari satu-satu untuk data ratusan/ribuan baris)
-  const {okCount, failCount} = await sbUpsertBulk('cs_ro_mitra', toSync, 200);
-  if(failCount>0) toast(`⚠️ ${okCount} tersinkron, ${failCount} gagal — cek koneksi & coba lagi.`);
-  else toast(`✅ Semua ${okCount} data berhasil disinkronkan ke server!`);
+  const {okCount, failCount, lastError} = await sbUpsertBulk('cs_ro_mitra', toSync, 200);
+  if(failCount>0){
+    console.error('Detail error import mitra:', lastError);
+    toast(`⚠️ ${okCount} tersinkron, ${failCount} gagal. Error: ${(lastError||'tidak diketahui').slice(0,150)}`);
+  } else {
+    toast(`✅ Semua ${okCount} data berhasil disinkronkan ke server!`);
+  }
 }
 
 // =========================================================
@@ -1164,18 +1193,23 @@ async function sbDelete(t,id){const r=await fetch(`${SB_URL}/rest/v1/${t}?id=eq.
 // dibanding kirim satu-per-satu — penting untuk import Excel ratusan/ribuan baris).
 async function sbUpsertBulk(t, rows, batchSize=200){
   let okCount=0, failCount=0;
+  let lastError='';
   for(let i=0;i<rows.length;i+=batchSize){
     const batch=rows.slice(i,i+batchSize);
     try{
       const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:{...SB_HDR,'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(batch)});
-      if(!r.ok) throw new Error(await r.text());
+      if(!r.ok){
+        const errText=await r.text();
+        throw new Error(errText);
+      }
       okCount+=batch.length;
     }catch(e){
       failCount+=batch.length;
+      lastError=e.message;
       console.error('sbUpsertBulk batch gagal:', t, 'baris', i, '-', i+batch.length, e.message);
     }
   }
-  return {okCount, failCount};
+  return {okCount, failCount, lastError};
 }
 
 // =========================================================
