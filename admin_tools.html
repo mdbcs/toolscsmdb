@@ -371,6 +371,40 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
   </div>
 </div>
 
+<!-- Modal Bulk Marketing -->
+<div class="modal-bg hidden" id="mdBulkMkt" onclick="if(event.target===this)closeModal('mdBulkMkt')">
+  <div class="modal modal-wide">
+    <div class="modal-title"><span>👤 Import Marketing Massal</span><button onclick="closeModal('mdBulkMkt')">✕</button></div>
+    <div class="al al-i" style="margin-bottom:10px;">Format: <b>nama | kode | brand | tim | no_hp | status</b> — brand/tim/hp/status boleh dikosongkan (tetap pakai pipe-nya). Status: <code>aktif</code> atau <code>nonaktif</code> (default aktif).<br>Contoh: <code>Budi Santoso | MKT01 | ngemiloh | Tim A | 081234567890 | aktif</code></div>
+    <div class="fg"><label>Paste Data Marketing</label>
+      <textarea id="bulkMktText" rows="10" placeholder="Budi Santoso | MKT01 | ngemiloh | Tim A | 081234567890 | aktif&#10;Siti Aminah | MKT02 | melumer | Tim B | 081298765432 | aktif&#10;..."></textarea>
+    </div>
+    <div id="bulkMktPreview" style="font-size:12px;margin-bottom:8px;"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn btn-o" onclick="closeModal('mdBulkMkt')">Batal</button>
+      <button class="btn btn-o" onclick="previewBulkMkt()">👁 Preview</button>
+      <button class="btn btn-p" onclick="importBulkMkt()">⬇️ Import Semua</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Bulk Deposit -->
+<div class="modal-bg hidden" id="mdBulkDep" onclick="if(event.target===this)closeModal('mdBulkDep')">
+  <div class="modal modal-wide">
+    <div class="modal-title"><span>💰 Import Deposit Massal</span><button onclick="closeModal('mdBulkDep')">✕</button></div>
+    <div class="al al-i" style="margin-bottom:10px;">Format: <b>nama_marketing | tipe(in/out) | nominal | nama_mitra | keterangan | tanggal (opsional, YYYY-MM-DD)</b><br>Contoh: <code>Budi Santoso | in | 50000 | Toko Maju | Kelebihan order | 2026-06-01</code></div>
+    <div class="fg"><label>Paste Data Deposit</label>
+      <textarea id="bulkDepText" rows="10" placeholder="Budi Santoso | in | 50000 | Toko Maju | Kelebihan order&#10;Siti Aminah | out | 25000 | Toko Sentosa | Potongan pelunasan | 2026-06-01&#10;..."></textarea>
+    </div>
+    <div id="bulkDepPreview" style="font-size:12px;margin-bottom:8px;"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn btn-o" onclick="closeModal('mdBulkDep')">Batal</button>
+      <button class="btn btn-o" onclick="previewBulkDep()">👁 Preview</button>
+      <button class="btn btn-p" onclick="importBulkDep()">⬇️ Import Semua</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal Paket Brand (Add/Edit) -->
 <div class="modal-bg hidden" id="mdPaket" onclick="if(event.target===this)closeModal('mdPaket')">
   <div class="modal">
@@ -425,6 +459,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 <div class="nav-bar">
   <div class="nav-logo">🏪 Admin Tools</div>
   <div class="nav-item active" id="nav-verif" onclick="showPanel('verif')">🔎 Verifikasi</div>
+  <div class="nav-item" id="nav-cekberat" onclick="showPanel('cekberat')">⚖️ Cek Berat</div>
   <div class="nav-item" id="nav-draft" onclick="showPanel('draft')">📋 Draft <span class="nav-badge" id="draftBadge">0</span></div>
   <div class="nav-item" id="nav-deposit" onclick="showPanel('deposit')">💰 Deposit</div>
   <div class="nav-item" id="nav-marketing" onclick="showPanel('marketing')">👤 Marketing</div>
@@ -668,6 +703,88 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 </div>
 </div>
 
+<!-- ==================== PANEL: CEK BERAT (ringkas — tanpa paket franchise) ==================== -->
+<div class="panel" id="panel-cekberat">
+  <div class="g2">
+  <div>
+    <div class="card">
+      <div class="ct"><div class="dot" style="background:#2B5CE6"></div>Pilih Brand
+        <button class="btn btn-o btn-sm" style="margin-left:auto" onclick="clearCekBerat()">🗑 Reset</button>
+      </div>
+      <div class="fg"><label>Brand</label>
+        <select id="cb_brand" onchange="renderCekBeratBB()">
+          <option value="">-- Pilih --</option>
+          <option value="ngemiloh">Ngemiloh</option>
+          <option value="melumer">Melumer</option>
+          <option value="gokuah">Gokuah</option>
+          <option value="yamie">Yamie Curry</option>
+          <option value="bacigor">Bacigor Mamang</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ct"><div class="dot" style="background:#1A8A4A"></div>Paste Orderan WA</div>
+      <div class="al al-i" style="margin-bottom:8px;">Paste teks orderan dari mitra — sistem akan otomatis mendeteksi produk berdasarkan kode atau nama, sama seperti di Verifikasi.</div>
+      <div class="fg">
+        <label>Paste Teks Orderan / Nota</label>
+        <textarea id="cb_text" rows="8" placeholder="Contoh:&#10;NG-MM06 x3&#10;Mie Lidi 2kg&#10;Basreng × 1&#10;..."></textarea>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <button class="btn btn-p btn-sm" onclick="autoDetectCekBerat()">⚡ Deteksi Otomatis</button>
+        <button class="btn btn-o btn-sm" onclick="document.getElementById('cb_text').value='';document.getElementById('cb_result').innerHTML=''">🗑 Bersihkan</button>
+      </div>
+      <div id="cb_result" style="margin-top:8px;font-size:12px;"></div>
+    </div>
+
+    <div class="card">
+      <div class="ct"><div class="dot" style="background:#F0A253"></div>Cek Item
+        <span style="margin-left:auto;font-size:11px;color:var(--text3);font-weight:400;">Cari & tambah manual juga bisa</span>
+      </div>
+      <div class="fg">
+        <label>Cari & Tambah Manual</label>
+        <div class="sw">
+          <input type="text" id="cb_search" placeholder="Ketik nama atau kode produk..." oninput="searchCekBerat(this.value)" onblur="setTimeout(()=>hideCekBeratDD(),200)" autocomplete="off">
+          <div class="sdd" id="cb_dd"></div>
+        </div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="tbl">
+          <thead><tr><th style="min-width:160px">Produk</th><th>Kode</th><th class="r">Harga</th><th class="r">QTY</th><th>Sat.</th><th class="r">Berat</th><th class="r">Subtotal</th><th></th></tr></thead>
+          <tbody id="cb_body"><tr><td colspan="8" style="text-align:center;padding:16px;color:var(--text3)">Belum ada item</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card" style="position:sticky;top:50px;">
+      <div class="ct"><div class="dot" style="background:#D94040"></div>Ringkasan
+        <button class="btn btn-o btn-sm" style="margin-left:auto" onclick="copyCekBeratOutput()">📋 Copy</button>
+      </div>
+      <table class="tbl rin" style="margin-bottom:10px;">
+        <tbody>
+          <tr><td class="lbl">Total Item</td><td class="val" id="cb_sumCount">0</td></tr>
+          <tr><td class="lbl">Total Harga</td><td class="val" id="cb_sumHarga">Rp0</td></tr>
+          <tr><td class="lbl">Total Berat</td><td class="val" id="cb_sumBerat">0 gr</td></tr>
+          <tr id="cb_sumPorsiRow" class="hidden"><td class="lbl">🍜 Total Porsi</td><td class="val" id="cb_sumPorsi">—</td></tr>
+        </tbody>
+      </table>
+      <div class="fg"><label>Ongkir (Rp)</label><input type="number" id="cb_ongkir" placeholder="0" oninput="renderCekBeratSummary()"></div>
+      <table class="tbl rin" style="margin-top:6px;">
+        <tbody>
+          <tr class="tot"><td style="padding:9px 6px;">💰 TOTAL + ONGKIR</td><td class="val" style="font-size:15px;padding:9px 6px;" id="cb_grandTotal">Rp0</td></tr>
+        </tbody>
+      </table>
+      <div style="margin-top:12px;">
+        <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px;">📋 Output</div>
+        <div class="ob" id="cb_outputBox">— Tambahkan item untuk lihat ringkasan —</div>
+      </div>
+    </div>
+  </div>
+  </div>
+</div>
+
 <!-- ==================== PANEL: DRAFT ==================== -->
 <div class="panel" id="panel-draft">
   <div id="csIdentityBarAdmin" style="display:none;background:#EEF2FD;border:1px solid #C5D5F8;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:#2B5CE6;align-items:center;gap:6px;justify-content:space-between;">
@@ -804,6 +921,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
     <span style="font-size:13px;color:var(--text2);">Deposit saldo marketing — kelebihan & potongan</span>
     <div style="display:flex;gap:8px;">
       <button class="btn btn-o btn-sm" onclick="exportDepositExcel()">⬆️ Export</button>
+      <button class="btn btn-o btn-sm" onclick="openModal('mdBulkDep')">📋 Import Massal</button>
       <button class="btn btn-p btn-sm" onclick="openDepModal()">+ Transaksi</button>
     </div>
   </div>
@@ -849,6 +967,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
     <div style="display:flex;gap:8px;">
       <button class="btn btn-o btn-sm" onclick="loadAllFromSheets()">🔄 Refresh</button>
       <button class="btn btn-o btn-sm" onclick="exportMktExcel()">⬆️ Export</button>
+      <button class="btn btn-o btn-sm" onclick="openModal('mdBulkMkt')">📋 Import Massal</button>
       <button class="btn btn-p btn-sm" onclick="openMktModal()">+ Tambah Marketing</button>
     </div>
   </div>
@@ -951,6 +1070,45 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 // =========================================================
 const BRAND_LABEL = {ngemiloh:'Ngemiloh',melumer:'Melumer',gokuah:'Gokuah',yamie:'Yamie Curry',bacigor:'Bacigor Mamang'};
 const BRAND_COLOR = {ngemiloh:'#F0A253',melumer:'#2B5CE6',gokuah:'#D94040',yamie:'#1A8A4A',bacigor:'#7B5EA7'};
+
+// Normalisasi satuan produk dari berbagai format ke format standar (konsisten dengan CS RO & Mitra/Produk)
+function normalizeUnit(raw){
+  if(!raw) return '';
+  let u = String(raw).trim().toLowerCase();
+  u = u.replace(/^1\s+/, '');
+  u = u.replace(/\s*gram$/, 'gr').replace(/\s*gr$/, 'gr');
+  u = u.replace(/^(\d+)\s*gr$/, '$1gr');
+  u = u.replace(/\s+/g,'');
+  if(u==='kilogram') return 'kg';
+  if(u==='pack'||u==='pak') return 'pack';
+  return u;
+}
+
+// Tebak kategori produk dari namanya kalau field kategori belum diisi (konsisten dengan Mitra & Produk)
+function inferKategori(p){
+  const n=(p.name||'').toLowerCase();
+  if(n.includes('bumbu')) return 'bumbu';
+  if(n.includes('saus')||n.includes('saos')||n.includes('chili oil')||n.includes('cili oil')) return 'saus';
+  if(n.includes('paperbowl')||n.includes('paper bowl')||n.includes('bowl')||n.includes('tutup')||n.includes('foodpail')||n.includes('food pail')||n.includes('cup')||n.includes('kemasan')||n.includes('plastik')||n.includes('mika')||n.includes('sealer')||n.includes('label')||n.includes('hako')) return 'kemasan';
+  if(n.includes('sendok')||n.includes('sumpit')||n.includes('garpu')||n.includes('tissue')||n.includes('tisu')||n.includes('celemek')||n.includes('banner')||n.includes('tenda')||n.includes('payung')) return 'perlengkapan';
+  return 'bahan baku';
+}
+
+// Ekstrak qty dari baris teks orderan secara aman — qty harus berada di AKHIR baris
+// (setelah kode/nama produk disebut), supaya angka yang kebetulan ada di tengah kode produk
+// (mis. "NG-MM06") tidak salah tertangkap sebagai qty. Urutan prioritas: x/× di akhir baris →
+// label qty: → angka+satuan di akhir baris → angka polos di akhir baris.
+function parseQtyFromLine(line){
+  let m = line.match(/[×x]\s*(\d+(?:[.,]\d+)?)\s*(?:kg|gr|gram|pcs|pack)?\s*$/i);
+  if(m) return parseFloat(m[1].replace(',','.'))||1;
+  m = line.match(/qty\s*[:=]\s*(\d+(?:[.,]\d+)?)/i);
+  if(m) return parseFloat(m[1].replace(',','.'))||1;
+  m = line.match(/(\d+(?:[.,]\d+)?)\s*(?:kg|gr|gram|pcs|pack)\s*$/i);
+  if(m) return parseFloat(m[1].replace(',','.'))||1;
+  m = line.match(/(\d+(?:[.,]\d+)?)\s*$/);
+  if(m) return parseFloat(m[1].replace(',','.'))||1;
+  return 1;
+}
 
 const PAKET_DB = {
   ngemiloh:{
@@ -1145,6 +1303,24 @@ const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 const SB_HDR = { 'Content-Type':'application/json', 'apikey':SB_KEY, 'Authorization':'Bearer '+SB_KEY, 'Prefer':'return=representation' };
 async function sbGet(t,p=''){const r=await fetch(`${SB_URL}/rest/v1/${t}?${p}`,{headers:SB_HDR});if(!r.ok)throw new Error(await r.text());return r.json();}
 async function sbUpsert(t,b){const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:{...SB_HDR,'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(b)});if(!r.ok)throw new Error(await r.text());return r.json();}
+
+// Upsert banyak baris sekaligus dalam beberapa batch — jauh lebih cepat & ringan ke server
+// dibanding kirim satu-per-satu, penting untuk import massal ratusan baris.
+async function sbUpsertBulk(t, rows, batchSize=200){
+  let okCount=0, failCount=0;
+  for(let i=0;i<rows.length;i+=batchSize){
+    const batch=rows.slice(i,i+batchSize);
+    try{
+      const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:{...SB_HDR,'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(batch)});
+      if(!r.ok) throw new Error(await r.text());
+      okCount+=batch.length;
+    }catch(e){
+      failCount+=batch.length;
+      console.error('sbUpsertBulk batch gagal:', t, 'baris', i, '-', i+batch.length, e.message);
+    }
+  }
+  return {okCount, failCount};
+}
 async function sbDelete(t,id){const r=await fetch(`${SB_URL}/rest/v1/${t}?id=eq.${id}`,{method:'DELETE',headers:SB_HDR});if(!r.ok)throw new Error(await r.text());}
 
 function draftToRow(d){
@@ -1387,6 +1563,109 @@ async function deleteDepositRemote(id){
   LSSet('adm_deposit', depositDB);
   try{ await sbDelete('admin_deposit', id); } catch(e){ console.warn('Gagal hapus deposit:', e.message); }
 }
+
+// =========================================================
+// IMPORT MASSAL — MARKETING
+// Format: nama | kode | brand | tim | no_hp | status
+// =========================================================
+let bulkMktParsed = [];
+
+function parseBulkMktText(){
+  const text=document.getElementById('bulkMktText').value;
+  const lines=text.split('\n').map(l=>l.trim()).filter(Boolean);
+  return lines.map(line=>{
+    const parts=line.split('|').map(x=>x.trim());
+    const [nama, kode='', brand='', tim='', hp='', status='aktif'] = parts;
+    return { nama, kode, brand: brand.toLowerCase(), tim, hp, status: (status||'aktif').toLowerCase()==='nonaktif'?'nonaktif':'aktif', _raw: line, _validParts: parts.length>=1 && !!nama };
+  });
+}
+
+function previewBulkMkt(){
+  bulkMktParsed = parseBulkMktText();
+  const ok = bulkMktParsed.filter(r=>r._validParts).length;
+  const err = bulkMktParsed.length - ok;
+  document.getElementById('bulkMktPreview').innerHTML =
+    `<span style="color:var(--green)">✅ ${ok} marketing valid</span>` +
+    (err ? `<br><span style="color:var(--red)">❌ ${err} baris tidak valid (nama wajib diisi)</span>` : '');
+}
+
+async function importBulkMkt(){
+  bulkMktParsed = parseBulkMktText();
+  const validRows = bulkMktParsed.filter(r=>r._validParts);
+  if(!validRows.length){ toast('⚠️ Tidak ada data marketing valid untuk diimport'); return; }
+  let count=0;
+  const toSync=[];
+  validRows.forEach(r=>{
+    const data={id:Date.now().toString()+Math.random().toString(36).slice(2,6), nama:r.nama, kode:r.kode, brand:r.brand, tim:r.tim, hp:r.hp, status:r.status};
+    marketingDB.push(data);
+    toSync.push({ id:data.id, data, updated_at:new Date().toISOString() });
+    count++;
+  });
+  LSSet('adm_marketing', marketingDB);
+  closeModal('mdBulkMkt');
+  renderMarketing(); fillMktDropdowns();
+  toast(`⏳ Mengimport ${count} marketing...`);
+  const {okCount, failCount} = await sbUpsertBulk('admin_marketing', toSync, 200);
+  if(failCount>0) toast(`⚠️ ${okCount} tersinkron, ${failCount} gagal — cek koneksi.`);
+  else toast(`✅ ${okCount} marketing berhasil diimport & tersinkron!`);
+}
+
+// =========================================================
+// IMPORT MASSAL — DEPOSIT
+// Format: nama_marketing | tipe(in/out) | nominal | nama_mitra | keterangan | tanggal(opsional)
+// =========================================================
+let bulkDepParsed = [];
+
+function parseBulkDepText(){
+  const text=document.getElementById('bulkDepText').value;
+  const lines=text.split('\n').map(l=>l.trim()).filter(Boolean);
+  const todayStr=new Date().toISOString().slice(0,10);
+  return lines.map(line=>{
+    const parts=line.split('|').map(x=>x.trim());
+    const [mktNamaRaw='', tipeRaw='in', nominalRaw='0', mitra='', ket='', tgl=''] = parts;
+    const tipe = tipeRaw.toLowerCase()==='out' ? 'out' : 'in';
+    const nominal = parseInt(nominalRaw.replace(/[^0-9]/g,''))||0;
+    const mkt = marketingDB.find(m=>m.nama.toLowerCase()===mktNamaRaw.toLowerCase());
+    return {
+      mktNamaRaw, mktId: mkt?mkt.id:null, mktNama: mkt?mkt.nama:mktNamaRaw,
+      tipe, nominal, mitra, ket, tgl: tgl||todayStr,
+      _valid: !!mkt && nominal>0,
+    };
+  });
+}
+
+function previewBulkDep(){
+  bulkDepParsed = parseBulkDepText();
+  const ok = bulkDepParsed.filter(r=>r._valid).length;
+  const errNoMkt = bulkDepParsed.filter(r=>!r.mktId).length;
+  const errNominal = bulkDepParsed.filter(r=>r.mktId && r.nominal<=0).length;
+  let html = `<span style="color:var(--green)">✅ ${ok} baris valid</span>`;
+  if(errNoMkt) html += `<br><span style="color:var(--red)">❌ ${errNoMkt} baris marketing tidak ditemukan (cek nama persis sama dengan data Marketing)</span>`;
+  if(errNominal) html += `<br><span style="color:var(--red)">❌ ${errNominal} baris nominal tidak valid</span>`;
+  document.getElementById('bulkDepPreview').innerHTML = html;
+}
+
+async function importBulkDep(){
+  bulkDepParsed = parseBulkDepText();
+  const validRows = bulkDepParsed.filter(r=>r._valid);
+  if(!validRows.length){ toast('⚠️ Tidak ada data deposit valid — pastikan nama marketing persis sama dengan data Marketing yang sudah ada'); return; }
+  let count=0;
+  const toSync=[];
+  validRows.forEach(r=>{
+    const data={id:Date.now().toString()+Math.random().toString(36).slice(2,6), mktId:r.mktId, mktNama:r.mktNama, tipe:r.tipe, nominal:r.nominal, mitra:r.mitra, ket:r.ket, tgl:r.tgl};
+    depositDB.unshift(data);
+    toSync.push({ id:data.id, data, updated_at:new Date().toISOString() });
+    count++;
+  });
+  LSSet('adm_deposit', depositDB);
+  closeModal('mdBulkDep');
+  renderDepSaldo(); renderDeposit();
+  toast(`⏳ Mengimport ${count} transaksi deposit...`);
+  const {okCount, failCount} = await sbUpsertBulk('admin_deposit', toSync, 200);
+  if(failCount>0) toast(`⚠️ ${okCount} tersinkron, ${failCount} gagal — cek koneksi.`);
+  else toast(`✅ ${okCount} deposit berhasil diimport & tersinkron!`);
+}
+
 async function saveAktualRemote(rec){
   LSSet('adm_aktual', aktualDB);
   try{ await sbUpsert('admin_aktual', { id: rec.id, data: rec, updated_at: new Date().toISOString() }); }
@@ -1456,7 +1735,7 @@ function flattenBrandsToProduk(brandsObj){
   Object.keys(brandsObj||{}).forEach(brandKey=>{
     const products = brandsObj[brandKey]?.products || [];
     products.forEach(p=>{
-      out.push({ brand:brandKey, code:p.code, name:p.name, unit:p.unit, harga:p.harga, berat:p.berat||0, kategori:p.kategori||'', alias:p.alias||[] });
+      out.push({ brand:brandKey, code:p.code, name:p.name, unit:p.unit, harga:p.harga, berat:p.berat||0, kategori:p.kategori||inferKategori(p), alias:p.alias||[] });
     });
   });
   return out;
@@ -1496,7 +1775,7 @@ let payType = '', bbItems = [], curPaket = null, curState = null;
 // NAV
 // =========================================================
 function showPanel(p){
-  ['verif','draft','deposit','marketing','produk','paket','cetak'].forEach(x=>{
+  ['verif','cekberat','draft','deposit','marketing','produk','paket','cetak'].forEach(x=>{
     document.getElementById('panel-'+x)?.classList.toggle('active',x===p);
     const nav=document.getElementById('nav-'+x);
     if(nav) nav.classList.toggle('active',x===p);
@@ -2980,9 +3259,14 @@ function exportProdukExcel(){
 // =========================================================
 // AUTO-DETECT BAHAN BAKU DARI ORDERAN
 // =========================================================
+let _lastDetectedTextBB = '';
 function autoDetectBB(){
   const text=document.getElementById('bbAutoText').value;
   if(!text.trim()){toast('⚠️ Paste teks orderan dulu!');return;}
+  if(text.trim()===_lastDetectedTextBB && bbItems.length>0){
+    if(!confirm('Teks ini sudah pernah diproses sebelumnya.\n\nLanjutkan bisa menambah qty dobel kalau produknya sama.\n\nLanjutkan tetap?')) return;
+  }
+  _lastDetectedTextBB = text.trim();
   const allProduk=getAllProduk();
   const brand=document.getElementById('brand').value;
   const filtered=brand?allProduk.filter(p=>p.brand===brand):allProduk;
@@ -3003,8 +3287,7 @@ function autoDetectBB(){
     const lineLow=line.toLowerCase();
     let qty=qtyHint||1;
     if(!qtyHint){
-      const qtyMatch=line.match(/[×x]\s*(\d+)|(\d+)\s*[×x]|qty\s*[:=]?\s*(\d+)/i);
-      if(qtyMatch) qty=parseInt(qtyMatch[1]||qtyMatch[2]||qtyMatch[3])||1;
+      qty=parseQtyFromLine(line);
     }
 
     // Priority: match by code bracket first, then code in line, then name
@@ -3025,6 +3308,167 @@ function autoDetectBB(){
 
   renderBB();hitung();
   const resEl=document.getElementById('bbAutoResult');
+  resEl.innerHTML=[...detected,...notFound].map(l=>`<div style="padding:2px 0;color:${l.startsWith('✅')?'var(--green)':'var(--text3)'}">${l}</div>`).join('');
+  toast(`✅ ${detected.length} produk terdeteksi, ${notFound.length} tidak ditemukan`);
+}
+
+// =========================================================
+// PANEL CEK BERAT — versi ringkas (paste WA → cek item → total harga/berat/porsi → ongkir saja)
+// Terpisah dari state Verifikasi (bbItems) supaya tidak saling mengganggu.
+// =========================================================
+let cbItems = [];
+
+function isPorsiItemCB(p){
+  const u=normalizeUnit(p.unit||'');
+  const kat=p.kategori||inferKategori(p);
+  return u==='pcs' && kat==='bahan baku';
+}
+
+function clearCekBerat(){
+  cbItems=[];
+  document.getElementById('cb_brand').value='';
+  document.getElementById('cb_text').value='';
+  document.getElementById('cb_result').innerHTML='';
+  document.getElementById('cb_ongkir').value='';
+  document.getElementById('cb_search').value='';
+  renderCekBeratBB();
+}
+
+function renderCekBeratBB(){ renderCekBeratTable(); renderCekBeratSummary(); }
+
+function searchCekBerat(q){
+  const brand=document.getElementById('cb_brand').value;
+  const dd=document.getElementById('cb_dd');
+  if(!q.trim()){dd.classList.remove('show');return;}
+  const ql=q.toLowerCase();
+  const res=getAllProduk().filter(p=>(!brand||p.brand===brand)&&(p.name.toLowerCase().includes(ql)||p.code.toLowerCase().includes(ql))).slice(0,10);
+  if(!res.length){dd.classList.remove('show');return;}
+  dd.innerHTML=res.map(p=>`<div class="sdd-opt" onmousedown="addCekBeratItem('${p.code}')"><div class="on">${p.name}</div><div class="om">${p.code} · ${p.unit} · Rp${p.harga.toLocaleString('id')}</div></div>`).join('');
+  dd.classList.add('show');
+}
+function hideCekBeratDD(){ document.getElementById('cb_dd').classList.remove('show'); }
+
+function addCekBeratItem(code){
+  const p=getAllProduk().find(x=>x.code===code); if(!p) return;
+  const ex=cbItems.find(i=>i.produk.code===code);
+  if(ex) ex.qty++; else cbItems.push({produk:p, qty:1});
+  document.getElementById('cb_search').value=''; hideCekBeratDD();
+  renderCekBeratBB();
+}
+function updateCekBeratQty(code,val){
+  const i=cbItems.find(x=>x.produk.code===code);
+  if(i) i.qty=Math.max(0.1,parseFloat(val)||1);
+  renderCekBeratBB();
+}
+function removeCekBeratItem(code){ cbItems=cbItems.filter(i=>i.produk.code!==code); renderCekBeratBB(); }
+
+function renderCekBeratTable(){
+  const body=document.getElementById('cb_body');
+  if(!cbItems.length){
+    body.innerHTML='<tr><td colspan="8" style="text-align:center;padding:16px;color:var(--text3)">Belum ada item</td></tr>';
+    return;
+  }
+  body.innerHTML=cbItems.map(item=>{
+    const sub=item.produk.harga*item.qty, b=item.produk.berat*item.qty;
+    return `<tr>
+      <td><b style="font-size:12px">${item.produk.name}</b></td>
+      <td style="font-size:11px;color:var(--text3)">${item.produk.code}</td>
+      <td class="r">Rp${item.produk.harga.toLocaleString('id')}</td>
+      <td class="r"><input type="number" value="${item.qty}" min="0.1" step="0.1" onchange="updateCekBeratQty('${item.produk.code}',this.value)" style="width:55px;border:1px solid var(--border);border-radius:6px;padding:3px 5px;font-family:inherit;font-size:12px;text-align:center;"></td>
+      <td>${item.produk.unit}</td>
+      <td class="r" style="font-size:11px">${b>=1000?(b/1000).toFixed(2)+'kg':b+'gr'}</td>
+      <td class="r"><b>Rp${sub.toLocaleString('id')}</b></td>
+      <td><button class="btn btn-rd btn-xs" onclick="removeCekBeratItem('${item.produk.code}')">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderCekBeratSummary(){
+  let totalHarga=0, totalBerat=0, totalPorsi=0;
+  cbItems.forEach(item=>{
+    totalHarga+=item.produk.harga*item.qty;
+    totalBerat+=item.produk.berat*item.qty;
+    if(isPorsiItemCB(item.produk)) totalPorsi+=item.qty;
+  });
+  const ongkir=parseInt(document.getElementById('cb_ongkir')?.value)||0;
+  const grand=totalHarga+ongkir;
+
+  document.getElementById('cb_sumCount').textContent=cbItems.length;
+  document.getElementById('cb_sumHarga').textContent='Rp'+totalHarga.toLocaleString('id');
+  document.getElementById('cb_sumBerat').textContent=totalBerat>=1000?(totalBerat/1000).toFixed(2)+' kg':totalBerat+' gr';
+  const porsiRow=document.getElementById('cb_sumPorsiRow');
+  if(totalPorsi>0){ porsiRow.classList.remove('hidden'); document.getElementById('cb_sumPorsi').textContent=totalPorsi.toLocaleString('id')+' porsi'; }
+  else porsiRow.classList.add('hidden');
+  document.getElementById('cb_grandTotal').textContent='Rp'+grand.toLocaleString('id');
+
+  // Output ringkas siap-copy
+  if(!cbItems.length){
+    document.getElementById('cb_outputBox').textContent='— Tambahkan item untuk lihat ringkasan —';
+    return;
+  }
+  const brandLabel=BRAND_LABEL[document.getElementById('cb_brand').value]||document.getElementById('cb_brand').value||'—';
+  const lines=[`CEK BERAT — ${brandLabel.toUpperCase()}`,''];
+  cbItems.forEach(i=>{
+    const u=normalizeUnit(i.produk.unit||''); const uStr=u==='pcs'?'':' '+u;
+    lines.push(`${i.produk.name} ${i.qty}${uStr} = Rp${(i.produk.harga*i.qty).toLocaleString('id')}`);
+  });
+  lines.push('');
+  lines.push(`Total Harga   : Rp${totalHarga.toLocaleString('id')}`);
+  lines.push(`Total Berat   : ${totalBerat>=1000?(totalBerat/1000).toFixed(2)+' kg':totalBerat+' gr'}`);
+  if(totalPorsi>0) lines.push(`Total Porsi   : ${totalPorsi.toLocaleString('id')} porsi`);
+  lines.push(`Ongkir        : Rp${ongkir.toLocaleString('id')}`);
+  lines.push(`TOTAL + ONGKIR: Rp${grand.toLocaleString('id')}`);
+  document.getElementById('cb_outputBox').textContent=lines.join('\n');
+}
+
+function copyCekBeratOutput(){
+  navigator.clipboard.writeText(document.getElementById('cb_outputBox').textContent||'').then(()=>toast('✓ Output tersalin!'));
+}
+
+let _lastDetectedTextCB = '';
+function autoDetectCekBerat(){
+  const text=document.getElementById('cb_text').value;
+  if(!text.trim()){ toast('⚠️ Paste teks orderan dulu!'); return; }
+  if(text.trim()===_lastDetectedTextCB && cbItems.length>0){
+    if(!confirm('Teks ini sudah pernah diproses sebelumnya.\n\nLanjutkan bisa menambah qty dobel kalau produknya sama.\n\nLanjutkan tetap?')) return;
+  }
+  _lastDetectedTextCB = text.trim();
+  const allProduk=getAllProduk();
+  const brand=document.getElementById('cb_brand').value;
+  const filtered=brand?allProduk.filter(p=>p.brand===brand):allProduk;
+  const lines=text.split('\n').map(l=>l.trim()).filter(Boolean);
+  let detected=[], notFound=[];
+
+  lines.forEach(line=>{
+    const notaMatch=line.match(/^\[([^\]]+)\]\s*[-–]\s*(.+?)\s*[-–]\s*(\d+)\s*[-–]/);
+    let codeHint=null, qtyHint=null, nameHint=null;
+    if(notaMatch){
+      codeHint=notaMatch[1].trim();
+      nameHint=notaMatch[2].trim();
+      qtyHint=parseInt(notaMatch[3])||1;
+    }
+    const lineLow=line.toLowerCase();
+    let qty=qtyHint||1;
+    if(!qtyHint){
+      qty=parseQtyFromLine(line);
+    }
+    let found=null;
+    if(codeHint) found=filtered.find(p=>p.code.toLowerCase()===codeHint.toLowerCase());
+    if(!found) found=filtered.find(p=>lineLow.includes('['+p.code.toLowerCase()+']')||lineLow.includes(p.code.toLowerCase()));
+    if(!found&&nameHint) found=filtered.find(p=>p.name.length>=4&&nameHint.toLowerCase().includes(p.name.toLowerCase().substring(0,Math.min(p.name.length,10))));
+    if(!found) found=filtered.find(p=>p.name.length>=4&&lineLow.includes(p.name.toLowerCase()));
+
+    if(found){
+      const ex=cbItems.find(i=>i.produk.code===found.code);
+      if(ex) ex.qty+=qty; else cbItems.push({produk:found,qty});
+      detected.push(`✅ <b>${found.name}</b> ×${qty} — <span style="color:var(--text3)">${found.code}</span>`);
+    } else {
+      notFound.push(`❓ "${line.substring(0,60)}${line.length>60?'…':''}" — tidak ditemukan`);
+    }
+  });
+
+  renderCekBeratBB();
+  const resEl=document.getElementById('cb_result');
   resEl.innerHTML=[...detected,...notFound].map(l=>`<div style="padding:2px 0;color:${l.startsWith('✅')?'var(--green)':'var(--text3)'}">${l}</div>`).join('');
   toast(`✅ ${detected.length} produk terdeteksi, ${notFound.length} tidak ditemukan`);
 }

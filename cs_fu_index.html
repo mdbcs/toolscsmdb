@@ -431,7 +431,8 @@ let state = JSON.parse(localStorage.getItem('cs_state') || 'null') || {
   kategori: ['Penurunan', 'Peningkatan', 'Vakum 1 (60-89)', 'Vakum 2 (90-119)', 'Vakum 3 (120-179)', 'Churn (>180)'],
   discs: { Ngemiloh: ['Disc BB 10%', 'Disc BB 15%'], Melumer: ['Disc BB 10%', 'Disc BB 15%'], Gokuah: ['Disc BB 8%', 'Disc BB 10%'] },
   entries: [],
-  mitras: []
+  mitras: [],
+  disabledBrandLabels: []
 };
 
 function saveLocal() { localStorage.setItem('cs_state', JSON.stringify(state)); }
@@ -472,10 +473,11 @@ function setStatus(type, text) {
 
 async function syncFromSupabase(silent) {
   try {
-    const [entryRows, mitraRows, cfgRows] = await Promise.all([
+    const [entryRows, mitraRows, cfgRows, roBrandRows] = await Promise.all([
       sbGet('cs_fu_entries', 'select=*&order=ts.desc'),
       sbGet('cs_fu_mitra', 'select=*&order=ts.desc'),
       sbGet('shared_config', "key=in.(cs_fu_brands,cs_fu_kategori,cs_fu_discs)"),
+      sbGet('shared_config', "key=eq.cs_ro_brands"),
     ]);
     const newEntries = entryRows.map(rowToEntry);
     const newMitras  = mitraRows.map(rowToMitra);
@@ -487,19 +489,29 @@ async function syncFromSupabase(silent) {
       if (row.key === 'cs_fu_kategori' && row.value) newKategori = row.value;
       if (row.key === 'cs_fu_discs' && row.value) newDiscs = row.value;
     });
+    // Brand yang dinonaktifkan di tools "Mitra & Produk" (cs_ro_brands) — dipakai untuk
+    // menyembunyikan pilihan brand yang sama di sini juga (dicocokkan via nama, case-insensitive).
+    let newDisabledLabels = [];
+    if (roBrandRows.length && roBrandRows[0].value) {
+      Object.values(roBrandRows[0].value).forEach(b => {
+        if (b && b.disabled && b.label) newDisabledLabels.push(b.label.toLowerCase());
+      });
+    }
 
     // Bandingkan sebelum-sesudah supaya tidak re-render kalau memang tidak ada perubahan
     const changed = JSON.stringify(newEntries)!==JSON.stringify(state.entries)
       || JSON.stringify(newMitras)!==JSON.stringify(state.mitras)
       || JSON.stringify(newBrands)!==JSON.stringify(state.brands)
       || JSON.stringify(newKategori)!==JSON.stringify(state.kategori)
-      || JSON.stringify(newDiscs)!==JSON.stringify(state.discs);
+      || JSON.stringify(newDiscs)!==JSON.stringify(state.discs)
+      || JSON.stringify(newDisabledLabels)!==JSON.stringify(state.disabledBrandLabels||[]);
 
     state.entries = newEntries;
     state.mitras  = newMitras;
     state.brands  = newBrands;
     state.kategori = newKategori;
     state.discs = newDiscs;
+    state.disabledBrandLabels = newDisabledLabels;
     saveLocal();
     dbConnected = true;
     setStatus('ok', '🟢 Terhubung (Supabase)');
@@ -643,13 +655,20 @@ window.showPanel = (name) => {
 // ─── Dropdowns ────────────────────────────────────────────────────────────────
 function populateBrandDropdowns() {
   const ids = ['inp-brand', 'f-brand', 'disc-brand-sel', 'm-brand', 'filter-mitra-brand'];
+  const disabledLabels = (state.disabledBrandLabels||[]);
+  // Dropdown untuk INPUT baru menyembunyikan brand nonaktif; dropdown FILTER laporan/data tetap
+  // menampilkan semua brand (supaya data lama yang brand-nya kini nonaktif tetap bisa dicari).
+  const inputOnlyIds = ['inp-brand', 'disc-brand-sel', 'm-brand'];
   ids.forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     const cur = el.value;
     const isFilter = ['f-brand', 'filter-mitra-brand'].includes(id);
     el.innerHTML = isFilter ? '<option value="">Semua brand</option>' : '';
-    state.brands.forEach(b => {
+    const list = inputOnlyIds.includes(id)
+      ? state.brands.filter(b => !disabledLabels.includes(b.toLowerCase()))
+      : state.brands;
+    list.forEach(b => {
       const o = document.createElement('option');
       o.value = b; o.textContent = b; el.appendChild(o);
     });

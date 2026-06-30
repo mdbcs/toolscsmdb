@@ -131,6 +131,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 <div class="tabs">
   <div class="tab active" id="tab-mitra" onclick="showTab('mitra')">👥 Mitra <span class="tbadge" id="mitraCount">0</span></div>
   <div class="tab" id="tab-produk" onclick="showTab('produk')">📦 Produk</div>
+  <div class="tab" id="tab-brandsetting" onclick="showTab('brandsetting')">⚙️ Pengaturan Brand</div>
 </div>
 
 <div class="wrap">
@@ -161,7 +162,11 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 <div class="panel" id="panel-produk">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
     <span style="font-size:13px;color:var(--text2);font-weight:500;">Kelola produk & alias pengenalan kata kunci — dipakai bersama semua tools</span>
-    <button class="btn btn-p btn-sm" onclick="openProdModal()">+ Tambah Produk</button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-o btn-sm" onclick="exportProdukExcel()">⬆️ Export</button>
+      <button class="btn btn-o btn-sm" onclick="openXlProdModal()">📥 Import Excel Massal</button>
+      <button class="btn btn-p btn-sm" onclick="openProdModal()">+ Tambah Produk</button>
+    </div>
   </div>
 
   <div class="al al-i">
@@ -182,7 +187,33 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
   <div id="prodEmpty" class="empty" style="display:none;"><div class="ei">📦</div><p>Belum ada produk untuk brand ini.</p></div>
 </div>
 
+<!-- ===== PANEL: PENGATURAN BRAND ===== -->
+<div class="panel" id="panel-brandsetting">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+    <span style="font-size:13px;color:var(--text2);font-weight:500;">Aktifkan/nonaktifkan brand di tools CS FU, CS RO, dan Admin — tanpa menghapus datanya</span>
+    <button class="btn btn-p btn-sm" onclick="openAddBrandModal()">+ Tambah Brand Baru</button>
+  </div>
+  <div class="al al-i">
+    💡 Brand yang dinonaktifkan tidak akan muncul sebagai pilihan saat membuat order baru di CS RO maupun saat input FU di CS FU, tapi data lama tetap aman tersimpan.
+  </div>
+  <div id="brandSettingList" style="display:flex;flex-direction:column;gap:10px;"></div>
+</div>
+
 </div><!-- /wrap -->
+
+<!-- ===== MODAL: TAMBAH BRAND BARU ===== -->
+<div class="modal-bg" id="addBrandModal" style="display:none;" onclick="if(event.target===this)closeAddBrandModal()">
+  <div class="modal">
+    <div class="modal-title"><span>Tambah Brand Baru</span><button onclick="closeAddBrandModal()">✕</button></div>
+    <div class="fg"><label>ID Brand (huruf kecil, tanpa spasi) *</label><input id="ab_id" placeholder="cth: kentangku"></div>
+    <div class="fg"><label>Nama Tampilan *</label><input id="ab_label" placeholder="cth: Kentangku Crispy"></div>
+    <div class="fg"><label>Warna Tema</label><input id="ab_color" type="color" value="#2B5CE6" style="height:38px;border-radius:8px;border:1px solid var(--border);width:100%;cursor:pointer;"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
+      <button class="btn btn-o" onclick="closeAddBrandModal()">Batal</button>
+      <button class="btn btn-p" onclick="saveNewBrand()">Simpan Brand</button>
+    </div>
+  </div>
+</div>
 
 <!-- ===== MODAL: TAMBAH/EDIT MITRA ===== -->
 <div class="modal-bg" id="mitraModal" style="display:none;" onclick="if(event.target===this)closeMitraModal()">
@@ -279,6 +310,39 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
   </div>
 </div>
 
+<!-- ===== MODAL: IMPORT EXCEL PRODUK MASSAL ===== -->
+<div class="modal-bg" id="xlProdModal" style="display:none;" onclick="if(event.target===this)closeXlProdModal()">
+  <div class="modal modal-lg">
+    <div class="modal-title"><span>📥 Import Produk dari Excel</span><button onclick="closeXlProdModal()">✕</button></div>
+    <div id="xlProdStep1">
+      <div class="al al-i">ℹ️ Format kolom: <b>Brand, Kode, Nama Produk, Satuan, Harga, Berat(gram), Kategori, Alias</b> (Alias dipisah titik koma <code>;</code>)</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <button class="btn btn-o btn-sm" onclick="downloadProdTemplate()">⬇️ Download Template</button>
+        <button class="btn btn-o btn-sm" onclick="document.getElementById('xlProdFile').click()">📂 Pilih File</button>
+      </div>
+      <div class="xl-drop" id="xlProdDrop" ondragover="xlProdDragOver(event)" ondragleave="xlProdDragLeave()" ondrop="xlProdDropEv(event)">
+        <input type="file" id="xlProdFile" accept=".xlsx,.xls,.csv" onchange="xlProdFileChange(this)">
+        <div class="xi">📊</div>
+        <p>Drag & drop file Excel di sini</p>
+        <small>.xlsx / .xls / .csv — Maks 5MB</small>
+      </div>
+    </div>
+    <div id="xlProdStep2" style="display:none;">
+      <div class="xl-stat" id="xlProdStat"></div>
+      <div class="xl-preview" id="xlProdPreview"><table><thead id="xlProdHead"></thead><tbody id="xlProdBody"></tbody></table></div>
+      <div class="al al-w" id="xlProdWarn" style="display:none;margin-top:10px;"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap;">
+        <button class="btn btn-o" onclick="xlProdReset()">← Ganti File</button>
+        <select id="xlProdDupMode" style="border:1.5px solid var(--border);border-radius:var(--r);padding:7px 10px;font-family:inherit;font-size:12px;background:var(--surface);">
+          <option value="update">Duplikat kode: Update</option>
+          <option value="skip">Duplikat kode: Lewati</option>
+        </select>
+        <button class="btn btn-g" onclick="doImportProduk()">✅ Import Sekarang</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 const BRAND_DEFAULTS = {
   ngemiloh:{label:'Ngemiloh',color:'#D97706',products:[
@@ -343,55 +407,55 @@ const BRAND_DEFAULTS = {
     {code:'ML-BR',name:'Bumbu Tabur Rumput Laut 100gr',unit:'100gr',harga:10500,berat:100,alias:['bumbu rumput laut','rumput laut']},
   ]},
   gokuah:{label:'Gokuah',color:'#DC2626',products:[
-    {code:'GK-CKP',name:'Cuanki Keju Pedas',unit:'pcs',harga:8000,berat:0,alias:['cuanki keju pedas','cuanki keju']},
-    {code:'GK-CAB',name:'Cuanki Ayam Bawang',unit:'pcs',harga:8000,berat:0,alias:['cuanki ayam bawang','cuanki ayam']},
-    {code:'GK-CPJ',name:'Cuanki Pedas Juara',unit:'pcs',harga:8000,berat:0,alias:['cuanki pedas juara','cuanki pedas']},
-    {code:'GK-BKP',name:'Bakso Keju Pedas',unit:'pcs',harga:8000,berat:0,alias:['bakso keju pedas','bakso keju']},
-    {code:'GK-BKS',name:'Bakso Kaldu Spesial',unit:'pcs',harga:8000,berat:0,alias:['bakso kaldu spesial','bakso kaldu']},
-    {code:'GK-BPJ',name:'Bakso Pedas Juara',unit:'pcs',harga:8000,berat:0,alias:['bakso pedas juara','bakso pedas']},
-    {code:'GK-BTKP',name:'Batagor Keju Pedas',unit:'pcs',harga:8000,berat:0,alias:['batagor keju pedas','batagor keju']},
-    {code:'GK-BTAB',name:'Batagor Ayam Bawang',unit:'pcs',harga:8000,berat:0,alias:['batagor ayam bawang','batagor ayam']},
-    {code:'GK-BTPJ',name:'Batagor Pedas Juara',unit:'pcs',harga:8000,berat:0,alias:['batagor pedas juara','batagor pedas']},
-    {code:'GK-PB',name:'Paperbowl',unit:'pcs',harga:1250,berat:0,kategori:'kemasan',alias:['paperbowl','paper bowl','bowl']},
-    {code:'GK-TTP',name:'Tutup',unit:'pcs',harga:250,berat:0,kategori:'kemasan',alias:['tutup']},
-    {code:'GK-SDK',name:'Sendok Bebek',unit:'pcs',harga:200,berat:0,kategori:'perlengkapan',alias:['sendok bebek','sendok']},
+    {code:'GK-CKP',name:'Cuanki Keju Pedas',unit:'pcs',harga:8000,berat:66,alias:['cuanki keju pedas','cuanki keju']},
+    {code:'GK-CAB',name:'Cuanki Ayam Bawang',unit:'pcs',harga:8000,berat:66,alias:['cuanki ayam bawang','cuanki ayam']},
+    {code:'GK-CPJ',name:'Cuanki Pedas Juara',unit:'pcs',harga:8000,berat:66,alias:['cuanki pedas juara','cuanki pedas']},
+    {code:'GK-BKP',name:'Bakso Keju Pedas',unit:'pcs',harga:8000,berat:66,alias:['bakso keju pedas','bakso keju']},
+    {code:'GK-BKS',name:'Bakso Kaldu Spesial',unit:'pcs',harga:8000,berat:66,alias:['bakso kaldu spesial','bakso kaldu']},
+    {code:'GK-BPJ',name:'Bakso Pedas Juara',unit:'pcs',harga:8000,berat:66,alias:['bakso pedas juara','bakso pedas']},
+    {code:'GK-BTKP',name:'Batagor Keju Pedas',unit:'pcs',harga:8000,berat:66,alias:['batagor keju pedas','batagor keju']},
+    {code:'GK-BTAB',name:'Batagor Ayam Bawang',unit:'pcs',harga:8000,berat:66,alias:['batagor ayam bawang','batagor ayam']},
+    {code:'GK-BTPJ',name:'Batagor Pedas Juara',unit:'pcs',harga:8000,berat:66,alias:['batagor pedas juara','batagor pedas']},
+    {code:'GK-PB',name:'Paperbowl',unit:'pcs',harga:1250,berat:45,kategori:'kemasan',alias:['paperbowl','paper bowl','bowl']},
+    {code:'GK-TTP',name:'Tutup',unit:'pcs',harga:250,berat:6,kategori:'kemasan',alias:['tutup']},
+    {code:'GK-SDK',name:'Sendok Bebek',unit:'pcs',harga:200,berat:2,kategori:'perlengkapan',alias:['sendok bebek','sendok']},
     {code:'GK-SP',name:'Saus Pedas',unit:'kg',harga:29000,berat:1000,alias:['saus pedas','saos pedas']},
     {code:'GK-CO',name:'Chili Oil',unit:'kg',harga:87000,berat:1000,alias:['chili oil','cili oil']},
     {code:'GK-PGS',name:'Pangsit',unit:'kg',harga:42000,berat:1000,alias:['pangsit']},
   ]},
   yamie:{label:'Yamie Curry',color:'#15803D',products:[
-    {code:'YC-GC',name:'Golden Curry',unit:'pcs',harga:7000,berat:0,alias:['golden curry','golden']},
-    {code:'YC-CF',name:'Curry Fire',unit:'pcs',harga:7500,berat:0,alias:['curry fire']},
-    {code:'YC-CRF',name:'Creamy Fire',unit:'pcs',harga:7500,berat:0,alias:['creamy fire','creamy']},
-    {code:'YC-FS',name:'Fried Series',unit:'pcs',harga:7000,berat:0,alias:['fried series','fried']},
-    {code:'YC-AS',name:'Authentic Series',unit:'pcs',harga:7000,berat:0,alias:['authentic series','authentic']},
-    {code:'YC-FB',name:'Fire Blast',unit:'pcs',harga:7000,berat:0,alias:['fire blast']},
-    {code:'YC-NR',name:'Nori 1 Box 24 Lembar',unit:'pack',harga:35000,berat:0,kategori:'kemasan',alias:['nori']},
-    {code:'YC-PB',name:'Paperbowl',unit:'pcs',harga:1800,berat:0,kategori:'kemasan',alias:['paperbowl','bowl']},
-    {code:'YC-TTP',name:'Tutup',unit:'pcs',harga:300,berat:0,kategori:'kemasan',alias:['tutup']},
-    {code:'YC-SDK',name:'Sendok Bebek',unit:'pcs',harga:200,berat:0,kategori:'perlengkapan',alias:['sendok bebek','sendok']},
-    {code:'YC-SPT',name:'Sumpit',unit:'pcs',harga:300,berat:0,kategori:'perlengkapan',alias:['sumpit']},
+    {code:'YC-GC',name:'Golden Curry',unit:'pcs',harga:7000,berat:70,alias:['golden curry','golden']},
+    {code:'YC-CF',name:'Curry Fire',unit:'pcs',harga:7500,berat:70,alias:['curry fire']},
+    {code:'YC-CRF',name:'Creamy Fire',unit:'pcs',harga:7500,berat:70,alias:['creamy fire','creamy']},
+    {code:'YC-FS',name:'Fried Series',unit:'pcs',harga:7000,berat:70,alias:['fried series','fried']},
+    {code:'YC-AS',name:'Authentic Series',unit:'pcs',harga:7000,berat:70,alias:['authentic series','authentic']},
+    {code:'YC-FB',name:'Fire Blast',unit:'pcs',harga:7000,berat:70,alias:['fire blast']},
+    {code:'YC-NR',name:'Nori 1 Box 24 Lembar',unit:'pack',harga:35000,berat:200,kategori:'kemasan',alias:['nori']},
+    {code:'YC-PB',name:'Paperbowl',unit:'pcs',harga:1800,berat:45,kategori:'kemasan',alias:['paperbowl','bowl']},
+    {code:'YC-TTP',name:'Tutup',unit:'pcs',harga:300,berat:6,kategori:'kemasan',alias:['tutup']},
+    {code:'YC-SDK',name:'Sendok Bebek',unit:'pcs',harga:200,berat:2,kategori:'perlengkapan',alias:['sendok bebek','sendok']},
+    {code:'YC-SPT',name:'Sumpit',unit:'pcs',harga:300,berat:3,kategori:'perlengkapan',alias:['sumpit']},
     {code:'YC-SP',name:'Saus Pedas',unit:'kg',harga:29000,berat:1000,alias:['saus pedas','saos pedas']},
     {code:'YC-CO',name:'Chili Oil',unit:'kg',harga:87000,berat:1000,alias:['chili oil','cili oil']},
   ]},
   bacigor:{label:'Bacigor Mamang',color:'#7C3AED',products:[
-    {code:'BC-CCP',name:'Cuanki Creamy Pedas',unit:'pcs',harga:8000,berat:0,alias:['cuanki creamy pedas','cuanki creamy']},
-    {code:'BC-CKA',name:'Cuanki Kaldu Ayam',unit:'pcs',harga:8000,berat:0,alias:['cuanki kaldu ayam','cuanki kaldu']},
-    {code:'BC-CPS',name:'Cuanki Pedas Super',unit:'pcs',harga:8000,berat:0,alias:['cuanki pedas super','cuanki pedas']},
-    {code:'BC-BCP',name:'Bakso Creamy Pedas',unit:'pcs',harga:8000,berat:0,alias:['bakso creamy pedas','bakso creamy']},
-    {code:'BC-BKA',name:'Bakso Kaldu Ayam',unit:'pcs',harga:8000,berat:0,alias:['bakso kaldu ayam','bakso kaldu']},
-    {code:'BC-BPS',name:'Bakso Pedas Super',unit:'pcs',harga:8000,berat:0,alias:['bakso pedas super','bakso pedas']},
-    {code:'BC-BTCP',name:'Batagor Creamy Pedas',unit:'pcs',harga:8000,berat:0,alias:['batagor creamy pedas','batagor creamy']},
-    {code:'BC-BTKA',name:'Batagor Kaldu Ayam',unit:'pcs',harga:8000,berat:0,alias:['batagor kaldu ayam','batagor kaldu']},
-    {code:'BC-BTPS',name:'Batagor Pedas Super',unit:'pcs',harga:8000,berat:0,alias:['batagor pedas super','batagor pedas']},
+    {code:'BC-CCP',name:'Cuanki Creamy Pedas',unit:'pcs',harga:8000,berat:66,alias:['cuanki creamy pedas','cuanki creamy']},
+    {code:'BC-CKA',name:'Cuanki Kaldu Ayam',unit:'pcs',harga:8000,berat:66,alias:['cuanki kaldu ayam','cuanki kaldu']},
+    {code:'BC-CPS',name:'Cuanki Pedas Super',unit:'pcs',harga:8000,berat:66,alias:['cuanki pedas super','cuanki pedas']},
+    {code:'BC-BCP',name:'Bakso Creamy Pedas',unit:'pcs',harga:8000,berat:66,alias:['bakso creamy pedas','bakso creamy']},
+    {code:'BC-BKA',name:'Bakso Kaldu Ayam',unit:'pcs',harga:8000,berat:66,alias:['bakso kaldu ayam','bakso kaldu']},
+    {code:'BC-BPS',name:'Bakso Pedas Super',unit:'pcs',harga:8000,berat:66,alias:['bakso pedas super','bakso pedas']},
+    {code:'BC-BTCP',name:'Batagor Creamy Pedas',unit:'pcs',harga:8000,berat:66,alias:['batagor creamy pedas','batagor creamy']},
+    {code:'BC-BTKA',name:'Batagor Kaldu Ayam',unit:'pcs',harga:8000,berat:66,alias:['batagor kaldu ayam','batagor kaldu']},
+    {code:'BC-BTPS',name:'Batagor Pedas Super',unit:'pcs',harga:8000,berat:66,alias:['batagor pedas super','batagor pedas']},
     {code:'BC-BSR',name:'Basreng',unit:'kg',harga:44000,berat:1000,alias:['basreng']},
     {code:'BC-PLU',name:'Pilus',unit:'kg',harga:32500,berat:1000,alias:['pilus']},
     {code:'BC-SMY',name:'Siomay',unit:'kg',harga:48000,berat:1000,alias:['siomay','siomai']},
     {code:'BC-USU',name:'Usus',unit:'kg',harga:65000,berat:1000,alias:['usus']},
     {code:'BC-PGS',name:'Pangsit',unit:'kg',harga:50000,berat:1000,alias:['pangsit']},
-    {code:'BC-PB',name:'Paperbowl',unit:'pcs',harga:1800,berat:0,kategori:'kemasan',alias:['paperbowl','bowl']},
-    {code:'BC-TTP',name:'Tutup',unit:'pcs',harga:300,berat:0,kategori:'kemasan',alias:['tutup']},
-    {code:'BC-SDK',name:'Sendok Bebek',unit:'pcs',harga:200,berat:0,kategori:'perlengkapan',alias:['sendok bebek','sendok']},
+    {code:'BC-PB',name:'Paperbowl',unit:'pcs',harga:1800,berat:45,kategori:'kemasan',alias:['paperbowl','bowl']},
+    {code:'BC-TTP',name:'Tutup',unit:'pcs',harga:300,berat:6,kategori:'kemasan',alias:['tutup']},
+    {code:'BC-SDK',name:'Sendok Bebek',unit:'pcs',harga:200,berat:2,kategori:'perlengkapan',alias:['sendok bebek','sendok']},
     {code:'BC-SP',name:'Saus Pedas',unit:'kg',harga:29000,berat:1000,alias:['saus pedas']},
   ]},
 };
@@ -438,6 +502,8 @@ function sim(a,b){
   if(ta.every(t=>tb.some(x=>x.includes(t)||t.includes(x)))) return Math.max(baseScore, 0.8);
   return baseScore;
 }
+
+const KATEGORI_LIST = ['bahan baku','saus','bumbu','kemasan','perlengkapan'];
 
 function inferKategori(p){
   const n=(p.name||'').toLowerCase();
@@ -566,6 +632,28 @@ function exportMitraExcel(){
   }
 }
 
+function exportProdukExcel(){
+  try{
+    if(typeof XLSX === 'undefined'){ toast('❌ Library Excel belum siap, coba lagi.'); return; }
+    const rows=[XL_PROD_COLS];
+    Object.keys(BRANDS).forEach(bk=>{
+      (BRANDS[bk].products||[]).forEach(p=>{
+        rows.push([bk, p.code||'', p.name||'', p.unit||'', p.harga||0, p.berat||0, p.kategori||inferKategori(p), (p.alias||[]).join(';')]);
+      });
+    });
+    if(rows.length<=1){ toast('⚠️ Belum ada produk untuk diekspor'); return; }
+    const ws=XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols']=[{wch:12},{wch:14},{wch:24},{wch:10},{wch:10},{wch:12},{wch:14},{wch:30}];
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,'Data Produk');
+    XLSX.writeFile(wb,'data-produk-export-'+Date.now()+'.xlsx');
+    toast('⬆️ '+(rows.length-1)+' produk berhasil diekspor!');
+  }catch(err){
+    console.error('Export error:', err);
+    toast('❌ Gagal export: '+err.message);
+  }
+}
+
 function downloadTemplate(){
   const ws=XLSX.utils.aoa_to_sheet([XL_COLS,['2605001','Muhammad Akmal','628951234567','Jl. Kartini No.1','JNT Cargo','ngemiloh'],['2605002','Siti Rahayu','628987654321','Jl. Pahlawan No.5','JNE Express','melumer']]);
   ws['!cols']=[{wch:14},{wch:25},{wch:18},{wch:40},{wch:16},{wch:18}];
@@ -651,23 +739,138 @@ async function doImport(){
   // Simpan cache lokal dulu supaya UI langsung update
   localStorage.setItem('mitraDB', JSON.stringify(mitraDB));
   updMitraCount(); renderMitraDB(); closeXlModal();
-  toast(`✅ Import: +${added} baru, ${updated} diperbarui, ${skipped} dilewati — menyinkronkan ke server...`);
+  toast(`⏳ Import: +${added} baru, ${updated} diperbarui, ${skipped} dilewati — menyinkronkan ${toSync.length} baris ke server...`);
 
-  // Sinkronkan satu-satu ke Supabase (sequential agar tidak membanjiri koneksi)
-  let syncFailed=0;
-  for(const data of toSync){
-    try{ await saveMitraRemote(data); }
-    catch(e){ syncFailed++; console.error('Gagal sync mitra import:', data.kode, e.message); }
-  }
-  if(syncFailed>0) toast(`⚠️ ${syncFailed} mitra gagal disinkronkan ke server, tersimpan lokal saja.`);
-  else toast(`✅ Semua data berhasil disinkronkan ke server!`);
+  // Sinkronkan dalam batch (jauh lebih cepat dari satu-satu untuk data ratusan/ribuan baris)
+  const {okCount, failCount} = await sbUpsertBulk('cs_ro_mitra', toSync, 200);
+  if(failCount>0) toast(`⚠️ ${okCount} tersinkron, ${failCount} gagal — cek koneksi & coba lagi.`);
+  else toast(`✅ Semua ${okCount} data berhasil disinkronkan ke server!`);
+}
+
+// =========================================================
+// IMPORT PRODUK MASSAL DARI EXCEL
+// =========================================================
+function openXlProdModal(){ xlProdReset(); document.getElementById('xlProdModal').style.display='flex'; }
+function closeXlProdModal(){ document.getElementById('xlProdModal').style.display='none'; }
+function xlProdDragOver(e){ e.preventDefault(); document.getElementById('xlProdDrop').classList.add('drag'); }
+function xlProdDragLeave(){ document.getElementById('xlProdDrop').classList.remove('drag'); }
+function xlProdDropEv(e){ e.preventDefault(); xlProdDragLeave(); const file=e.dataTransfer.files[0]; if(file) parseXlProdFile(file); }
+function xlProdFileChange(input){ if(input.files[0]) parseXlProdFile(input.files[0]); }
+function xlProdReset(){
+  xlProdParsed=[];
+  document.getElementById('xlProdStep1').style.display='block';
+  document.getElementById('xlProdStep2').style.display='none';
+  document.getElementById('xlProdFile').value='';
+  document.getElementById('xlProdDrop').classList.remove('drag');
+}
+
+function downloadProdTemplate(){
+  const rows=[XL_PROD_COLS,
+    ['ngemiloh','NG-MM06','Macaroni Mateng','kg',35000,1000,'bahan baku','makaroni;macaroni;mac mateng'],
+    ['ngemiloh','NG-SK15','Saus Keju','kg',55000,1000,'saus','saus keju;saos keju'],
+  ];
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:12},{wch:14},{wch:24},{wch:10},{wch:10},{wch:12},{wch:14},{wch:30}];
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Data Produk');
+  XLSX.writeFile(wb,'template-data-produk.xlsx');
+  toast('⬇️ Template diunduh!');
+}
+
+function cleanProdCode(v){ return String(v||'').trim().replace(/^\[|\]$/g,''); }
+
+function parseXlProdFile(file){
+  if(file.size>5*1024*1024){ toast('⚠️ File terlalu besar (maks 5MB)'); return; }
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const data=new Uint8Array(e.target.result);
+      const wb=XLSX.read(data,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+      if(!rows.length){ toast('⚠️ Sheet kosong'); return; }
+      xlProdParsed=rows.map(r=>{
+        function gc(keys){for(const k of Object.keys(r)){for(const key of keys){if(k.toLowerCase().replace(/\s+/g,'').includes(key))return String(r[k]).trim();}}return'';}
+        const brandRaw=gc(['brand','merek']).toLowerCase();
+        const brand=BRAND_MAP[brandRaw]||brandRaw;
+        const code=cleanProdCode(gc(['kode','code']));
+        const name=gc(['namaproduk','nama']);
+        const unit=normalizeUnit(gc(['satuan','unit']))||'kg';
+        const harga=parseInt(gc(['harga']).replace(/[^0-9]/g,''))||0;
+        const berat=parseInt(gc(['beratgram','berat']).replace(/[^0-9]/g,''))||0;
+        const kategori=gc(['kategori'])||inferKategori({name});
+        const aliasRaw=gc(['alias','keyword']);
+        const alias=aliasRaw?aliasRaw.split(/[;,]/).map(a=>a.trim().toLowerCase()).filter(Boolean):[];
+        return {brand,code,name,unit,harga,berat,kategori,alias};
+      }).filter(r=>r.brand && r.name);
+      showXlProdPreview();
+    }catch(err){ toast('❌ Gagal baca file: '+err.message); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function showXlProdPreview(){
+  if(!xlProdParsed.length){ toast('⚠️ Tidak ada data valid (pastikan kolom Brand & Nama Produk terisi)'); return; }
+  const total=xlProdParsed.length;
+  const valid=xlProdParsed.filter(r=>r.brand && r.name && r.harga>0).length;
+  const invalid=total-valid;
+  const dup=xlProdParsed.filter(r=>BRANDS[r.brand]?.products?.find(p=>p.code===r.code)).length;
+  const unknownBrand=xlProdParsed.filter(r=>!BRANDS[r.brand]).length;
+  document.getElementById('xlProdStat').innerHTML=`
+    <div class="xl-stat-item"><b>${total}</b><span>Total</span></div>
+    <div class="xl-stat-item"><b style="color:var(--green)">${valid}</b><span>Valid</span></div>
+    ${invalid?`<div class="xl-stat-item"><b style="color:var(--red)">${invalid}</b><span>Tidak lengkap</span></div>`:''}
+    ${dup?`<div class="xl-stat-item"><b style="color:var(--warn)">${dup}</b><span>Kode duplikat</span></div>`:''}
+    ${unknownBrand?`<div class="xl-stat-item"><b style="color:var(--red)">${unknownBrand}</b><span>Brand tidak dikenal</span></div>`:''}`;
+  const warnEl=document.getElementById('xlProdWarn');
+  let warnMsgs=[];
+  if(invalid) warnMsgs.push(`${invalid} baris tidak lengkap (brand/nama/harga kosong) — akan dilewati.`);
+  if(unknownBrand) warnMsgs.push(`${unknownBrand} baris brand-nya tidak dikenal — tambah brand itu dulu di tab "Pengaturan Brand", lalu import ulang.`);
+  if(warnMsgs.length){ warnEl.style.display='flex'; warnEl.textContent='⚠️ '+warnMsgs.join(' '); }
+  else warnEl.style.display='none';
+
+  document.getElementById('xlProdHead').innerHTML='<tr>'+XL_PROD_COLS.map(c=>`<th>${c}</th>`).join('')+'<th>Status</th></tr>';
+  document.getElementById('xlProdBody').innerHTML=xlProdParsed.slice(0,80).map(r=>{
+    const isValid=r.brand && r.name && r.harga>0;
+    const isDup=!!BRANDS[r.brand]?.products?.find(p=>p.code===r.code);
+    const brandKnown=!!BRANDS[r.brand];
+    const status=!brandKnown?`<span style="color:var(--red)">❌ Brand asing</span>`:!isValid?`<span style="color:var(--red)">⚠ Tidak lengkap</span>`:isDup?`<span style="color:var(--warn)">⚡ Duplikat</span>`:`<span style="color:var(--green)">✓ Baru</span>`;
+    return `<tr><td>${r.brand||'—'}</td><td>${r.code||'—'}</td><td>${r.name||'—'}</td><td>${r.unit||'—'}</td><td>Rp${(r.harga||0).toLocaleString('id')}</td><td>${r.berat||0}</td><td>${r.kategori||'—'}</td><td>${status}</td></tr>`;
+  }).join('');
+  document.getElementById('xlProdPreview').style.display='block';
+  document.getElementById('xlProdStep1').style.display='none';
+  document.getElementById('xlProdStep2').style.display='block';
+}
+
+async function doImportProduk(){
+  const mode=document.getElementById('xlProdDupMode').value;
+  let added=0, updated=0, skipped=0;
+  xlProdParsed.forEach(r=>{
+    if(!r.brand || !r.name || !r.harga){ skipped++; return; }
+    if(!BRANDS[r.brand]){ skipped++; return; } // brand harus sudah ada (dibuat di Pengaturan Brand)
+    let code=r.code;
+    if(!code) code=(r.name.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8))||('PRD'+Date.now());
+    const arr=BRANDS[r.brand].products;
+    const idx=arr.findIndex(p=>p.code===code);
+    const data={code, name:r.name, unit:r.unit||'kg', harga:r.harga, berat:r.berat||0, kategori:r.kategori||inferKategori(r), alias:r.alias||[]};
+    if(idx>=0){
+      if(mode==='update'){ arr[idx]=data; updated++; } else { skipped++; }
+    } else {
+      arr.push(data); added++;
+    }
+  });
+
+  closeXlProdModal();
+  renderProduk();
+  toast(`⏳ Import: +${added} baru, ${updated} diperbarui, ${skipped} dilewati — menyinkronkan ke server...`);
+  await saveBrands();
+  toast(`✅ Import produk selesai & tersinkron ke server!`);
 }
 
 function renderProduk(){
-  // Build brand tabs
+  // Build brand tabs (brand nonaktif tetap tampil di sini supaya admin masih bisa kelola produknya)
   const tabEl = document.getElementById('prodBrandTabs');
   tabEl.innerHTML = Object.keys(BRANDS).map(k=>`
-    <div class="btab${prodBrandFilter===k?' active':''}" onclick="setProdBrand('${k}')">${BRANDS[k].label}</div>
+    <div class="btab${prodBrandFilter===k?' active':''}" onclick="setProdBrand('${k}')">${BRANDS[k].label}${BRANDS[k].disabled?' 🚫':''}</div>
   `).join('');
 
   // Build kategori tabs
@@ -957,6 +1160,24 @@ async function sbPost(t,b){const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:
 async function sbUpsert(t,b){const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:{...SB_HDR,'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(b)});if(!r.ok)throw new Error(await r.text());return r.json();}
 async function sbDelete(t,id){const r=await fetch(`${SB_URL}/rest/v1/${t}?id=eq.${id}`,{method:'DELETE',headers:SB_HDR});if(!r.ok)throw new Error(await r.text());}
 
+// Upsert banyak baris sekaligus dalam beberapa batch (jauh lebih cepat & ringan ke server
+// dibanding kirim satu-per-satu — penting untuk import Excel ratusan/ribuan baris).
+async function sbUpsertBulk(t, rows, batchSize=200){
+  let okCount=0, failCount=0;
+  for(let i=0;i<rows.length;i+=batchSize){
+    const batch=rows.slice(i,i+batchSize);
+    try{
+      const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:{...SB_HDR,'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(batch)});
+      if(!r.ok) throw new Error(await r.text());
+      okCount+=batch.length;
+    }catch(e){
+      failCount+=batch.length;
+      console.error('sbUpsertBulk batch gagal:', t, 'baris', i, '-', i+batch.length, e.message);
+    }
+  }
+  return {okCount, failCount};
+}
+
 // =========================================================
 // STATE
 // =========================================================
@@ -968,8 +1189,11 @@ let prodBrandFilter = 'ngemiloh';
 let prodKatFilter = '';
 let pendingAliases = [];
 let xlParsed = [];
+let xlProdParsed = [];
+let disabledBrands = []; // daftar brand id yang dinonaktifkan (tidak hapus data, hanya disembunyikan dari tools)
 
 const XL_COLS=['Kode Mitra','Nama','No Telp','Alamat','Ekspedisi','Brand'];
+const XL_PROD_COLS=['Brand','Kode','Nama Produk','Satuan','Harga','Berat(gram)','Kategori','Alias'];
 const BRAND_MAP={ngemiloh:'ngemiloh',melumer:'melumer',gokuah:'gokuah',yamie:'yamie','yamie curry':'yamie',bacigor:'bacigor','bacigor mamang':'bacigor'};
 
 // =========================================================
@@ -1000,12 +1224,70 @@ function toast(msg){
 // TABS
 // =========================================================
 function showTab(t){
-  ['mitra','produk'].forEach(x=>{
+  ['mitra','produk','brandsetting'].forEach(x=>{
     document.getElementById('panel-'+x)?.classList.toggle('active', x===t);
     document.getElementById('tab-'+x)?.classList.toggle('active', x===t);
   });
   if(t==='mitra') renderMitraDB();
   if(t==='produk') renderProduk();
+  if(t==='brandsetting') renderBrandSettingList();
+}
+
+// =========================================================
+// PENGATURAN BRAND — toggle aktif/nonaktif & tambah brand baru
+// =========================================================
+function renderBrandSettingList(){
+  const el=document.getElementById('brandSettingList');
+  if(!el) return;
+  const keys=Object.keys(BRANDS);
+  if(!keys.length){ el.innerHTML='<div class="empty"><div class="ei">🏷️</div><p>Belum ada brand.</p></div>'; return; }
+  el.innerHTML=keys.map(k=>{
+    const b=BRANDS[k];
+    const isOff=!!b.disabled;
+    const jumlahProduk=(b.products||[]).length;
+    return `<div class="card" style="display:flex;align-items:center;gap:14px;padding:14px 16px;margin-bottom:0;">
+      <div style="width:14px;height:14px;border-radius:50%;background:${b.color||'#888'};flex-shrink:0;"></div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;font-size:14px;">${b.label||k} <span style="font-size:11px;color:var(--text3);font-weight:400;">(${k})</span></div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px;">${jumlahProduk} produk ${isOff?'· <span style="color:var(--red);font-weight:600;">Nonaktif — tersembunyi dari CS FU & CS RO</span>':''}</div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;font-weight:600;color:${isOff?'var(--text3)':'var(--green)'};white-space:nowrap;">
+        <input type="checkbox" ${isOff?'':'checked'} onchange="toggleBrandDisabled('${k}', !this.checked)" style="width:16px;height:16px;cursor:pointer;">
+        ${isOff?'Nonaktif':'Aktif'}
+      </label>
+    </div>`;
+  }).join('');
+}
+
+async function toggleBrandDisabled(brandKey, disabled){
+  if(!BRANDS[brandKey]) return;
+  BRANDS[brandKey].disabled = disabled;
+  renderBrandSettingList();
+  toast(disabled?`⏳ Menonaktifkan ${BRANDS[brandKey].label}...`:`⏳ Mengaktifkan ${BRANDS[brandKey].label}...`);
+  await saveBrands();
+  toast(`✅ ${BRANDS[brandKey].label} ${disabled?'dinonaktifkan':'diaktifkan'} & tersinkron!`);
+}
+
+function openAddBrandModal(){
+  document.getElementById('ab_id').value='';
+  document.getElementById('ab_label').value='';
+  document.getElementById('ab_color').value='#2B5CE6';
+  document.getElementById('addBrandModal').style.display='flex';
+}
+function closeAddBrandModal(){ document.getElementById('addBrandModal').style.display='none'; }
+
+async function saveNewBrand(){
+  const id=document.getElementById('ab_id').value.trim().toLowerCase().replace(/[^a-z0-9]+/g,'');
+  const label=document.getElementById('ab_label').value.trim();
+  const color=document.getElementById('ab_color').value||'#2B5CE6';
+  if(!id||!label){ toast('⚠️ ID dan Nama brand wajib diisi!'); return; }
+  if(BRANDS[id]){ toast('⚠️ Brand dengan ID ini sudah ada!'); return; }
+  BRANDS[id]={label, color, products:[], disabled:false};
+  closeAddBrandModal();
+  renderBrandSettingList();
+  toast('⏳ Menyimpan brand baru...');
+  await saveBrands();
+  toast(`✅ Brand "${label}" ditambahkan & tersinkron! Sekarang bisa diisi produknya di tab Produk.`);
 }
 
 

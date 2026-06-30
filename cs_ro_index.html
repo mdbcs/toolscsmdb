@@ -565,6 +565,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <input type="number" id="discountVal" placeholder="0" value="0" min="0"
           oninput="calcFinal();genOutput();"
           style="border:1px solid var(--border);border-radius:var(--r);padding:6px 10px;font-family:inherit;font-size:13px;width:110px;">
+        <select id="discountTarget" onchange="calcFinal();genOutput();" style="border:1px solid var(--border);border-radius:var(--r);padding:6px 10px;font-family:inherit;font-size:13px;">
+          <option value="bb">Potong Bahan Baku</option>
+          <option value="ongkir">Potong Ongkir</option>
+        </select>
         <span id="discountPreview" style="font-size:12px;color:var(--red);font-weight:600;"></span>
       </div>
 
@@ -740,55 +744,55 @@ const BRAND_DEFAULTS = {
     {code:'ML-BR',name:'Bumbu Tabur Rumput Laut 100gr',unit:'100gr',harga:10500,berat:100,alias:['bumbu rumput laut','rumput laut']},
   ]},
   gokuah:{label:'Gokuah',color:'#DC2626',products:[
-    {code:'GK-CKP',name:'Cuanki Keju Pedas',unit:'pcs',harga:8000,berat:0,alias:['cuanki keju pedas','cuanki keju']},
-    {code:'GK-CAB',name:'Cuanki Ayam Bawang',unit:'pcs',harga:8000,berat:0,alias:['cuanki ayam bawang','cuanki ayam']},
-    {code:'GK-CPJ',name:'Cuanki Pedas Juara',unit:'pcs',harga:8000,berat:0,alias:['cuanki pedas juara','cuanki pedas']},
-    {code:'GK-BKP',name:'Bakso Keju Pedas',unit:'pcs',harga:8000,berat:0,alias:['bakso keju pedas','bakso keju']},
-    {code:'GK-BKS',name:'Bakso Kaldu Spesial',unit:'pcs',harga:8000,berat:0,alias:['bakso kaldu spesial','bakso kaldu']},
-    {code:'GK-BPJ',name:'Bakso Pedas Juara',unit:'pcs',harga:8000,berat:0,alias:['bakso pedas juara','bakso pedas']},
-    {code:'GK-BTKP',name:'Batagor Keju Pedas',unit:'pcs',harga:8000,berat:0,alias:['batagor keju pedas','batagor keju']},
-    {code:'GK-BTAB',name:'Batagor Ayam Bawang',unit:'pcs',harga:8000,berat:0,alias:['batagor ayam bawang','batagor ayam']},
-    {code:'GK-BTPJ',name:'Batagor Pedas Juara',unit:'pcs',harga:8000,berat:0,alias:['batagor pedas juara','batagor pedas']},
-    {code:'GK-PB',name:'Paperbowl',unit:'pcs',harga:1250,berat:0,alias:['paperbowl','paper bowl','bowl']},
-    {code:'GK-TTP',name:'Tutup',unit:'pcs',harga:250,berat:0,alias:['tutup']},
-    {code:'GK-SDK',name:'Sendok Bebek',unit:'pcs',harga:200,berat:0,alias:['sendok bebek','sendok']},
+    {code:'GK-CKP',name:'Cuanki Keju Pedas',unit:'pcs',harga:8000,berat:66,alias:['cuanki keju pedas','cuanki keju']},
+    {code:'GK-CAB',name:'Cuanki Ayam Bawang',unit:'pcs',harga:8000,berat:66,alias:['cuanki ayam bawang','cuanki ayam']},
+    {code:'GK-CPJ',name:'Cuanki Pedas Juara',unit:'pcs',harga:8000,berat:66,alias:['cuanki pedas juara','cuanki pedas']},
+    {code:'GK-BKP',name:'Bakso Keju Pedas',unit:'pcs',harga:8000,berat:66,alias:['bakso keju pedas','bakso keju']},
+    {code:'GK-BKS',name:'Bakso Kaldu Spesial',unit:'pcs',harga:8000,berat:66,alias:['bakso kaldu spesial','bakso kaldu']},
+    {code:'GK-BPJ',name:'Bakso Pedas Juara',unit:'pcs',harga:8000,berat:66,alias:['bakso pedas juara','bakso pedas']},
+    {code:'GK-BTKP',name:'Batagor Keju Pedas',unit:'pcs',harga:8000,berat:66,alias:['batagor keju pedas','batagor keju']},
+    {code:'GK-BTAB',name:'Batagor Ayam Bawang',unit:'pcs',harga:8000,berat:66,alias:['batagor ayam bawang','batagor ayam']},
+    {code:'GK-BTPJ',name:'Batagor Pedas Juara',unit:'pcs',harga:8000,berat:66,alias:['batagor pedas juara','batagor pedas']},
+    {code:'GK-PB',name:'Paperbowl',unit:'pcs',harga:1250,berat:45,alias:['paperbowl','paper bowl','bowl']},
+    {code:'GK-TTP',name:'Tutup',unit:'pcs',harga:250,berat:6,alias:['tutup']},
+    {code:'GK-SDK',name:'Sendok Bebek',unit:'pcs',harga:200,berat:2,alias:['sendok bebek','sendok']},
     {code:'GK-SP',name:'Saus Pedas',unit:'kg',harga:29000,berat:1000,alias:['saus pedas','saos pedas']},
     {code:'GK-CO',name:'Chili Oil',unit:'kg',harga:87000,berat:1000,alias:['chili oil','cili oil']},
     {code:'GK-PGS',name:'Pangsit',unit:'kg',harga:42000,berat:1000,alias:['pangsit']},
   ]},
   yamie:{label:'Yamie Curry',color:'#15803D',products:[
-    {code:'YC-GC',name:'Golden Curry',unit:'pcs',harga:7000,berat:0,alias:['golden curry','golden']},
-    {code:'YC-CF',name:'Curry Fire',unit:'pcs',harga:7500,berat:0,alias:['curry fire']},
-    {code:'YC-CRF',name:'Creamy Fire',unit:'pcs',harga:7500,berat:0,alias:['creamy fire','creamy']},
-    {code:'YC-FS',name:'Fried Series',unit:'pcs',harga:7000,berat:0,alias:['fried series','fried']},
-    {code:'YC-AS',name:'Authentic Series',unit:'pcs',harga:7000,berat:0,alias:['authentic series','authentic']},
-    {code:'YC-FB',name:'Fire Blast',unit:'pcs',harga:7000,berat:0,alias:['fire blast']},
-    {code:'YC-NR',name:'Nori 1 Box 24 Lembar',unit:'pack',harga:35000,berat:0,alias:['nori']},
-    {code:'YC-PB',name:'Paperbowl',unit:'pcs',harga:1800,berat:0,alias:['paperbowl','bowl']},
-    {code:'YC-TTP',name:'Tutup',unit:'pcs',harga:300,berat:0,alias:['tutup']},
-    {code:'YC-SDK',name:'Sendok Bebek',unit:'pcs',harga:200,berat:0,alias:['sendok bebek','sendok']},
-    {code:'YC-SPT',name:'Sumpit',unit:'pcs',harga:300,berat:0,alias:['sumpit']},
+    {code:'YC-GC',name:'Golden Curry',unit:'pcs',harga:7000,berat:70,alias:['golden curry','golden']},
+    {code:'YC-CF',name:'Curry Fire',unit:'pcs',harga:7500,berat:70,alias:['curry fire']},
+    {code:'YC-CRF',name:'Creamy Fire',unit:'pcs',harga:7500,berat:70,alias:['creamy fire','creamy']},
+    {code:'YC-FS',name:'Fried Series',unit:'pcs',harga:7000,berat:70,alias:['fried series','fried']},
+    {code:'YC-AS',name:'Authentic Series',unit:'pcs',harga:7000,berat:70,alias:['authentic series','authentic']},
+    {code:'YC-FB',name:'Fire Blast',unit:'pcs',harga:7000,berat:70,alias:['fire blast']},
+    {code:'YC-NR',name:'Nori 1 Box 24 Lembar',unit:'pack',harga:35000,berat:200,alias:['nori']},
+    {code:'YC-PB',name:'Paperbowl',unit:'pcs',harga:1800,berat:45,alias:['paperbowl','bowl']},
+    {code:'YC-TTP',name:'Tutup',unit:'pcs',harga:300,berat:6,alias:['tutup']},
+    {code:'YC-SDK',name:'Sendok Bebek',unit:'pcs',harga:200,berat:2,alias:['sendok bebek','sendok']},
+    {code:'YC-SPT',name:'Sumpit',unit:'pcs',harga:300,berat:3,alias:['sumpit']},
     {code:'YC-SP',name:'Saus Pedas',unit:'kg',harga:29000,berat:1000,alias:['saus pedas','saos pedas']},
     {code:'YC-CO',name:'Chili Oil',unit:'kg',harga:87000,berat:1000,alias:['chili oil','cili oil']},
   ]},
   bacigor:{label:'Bacigor Mamang',color:'#7C3AED',products:[
-    {code:'BC-CCP',name:'Cuanki Creamy Pedas',unit:'pcs',harga:8000,berat:0,alias:['cuanki creamy pedas','cuanki creamy']},
-    {code:'BC-CKA',name:'Cuanki Kaldu Ayam',unit:'pcs',harga:8000,berat:0,alias:['cuanki kaldu ayam','cuanki kaldu']},
-    {code:'BC-CPS',name:'Cuanki Pedas Super',unit:'pcs',harga:8000,berat:0,alias:['cuanki pedas super','cuanki pedas']},
-    {code:'BC-BCP',name:'Bakso Creamy Pedas',unit:'pcs',harga:8000,berat:0,alias:['bakso creamy pedas','bakso creamy']},
-    {code:'BC-BKA',name:'Bakso Kaldu Ayam',unit:'pcs',harga:8000,berat:0,alias:['bakso kaldu ayam','bakso kaldu']},
-    {code:'BC-BPS',name:'Bakso Pedas Super',unit:'pcs',harga:8000,berat:0,alias:['bakso pedas super','bakso pedas']},
-    {code:'BC-BTCP',name:'Batagor Creamy Pedas',unit:'pcs',harga:8000,berat:0,alias:['batagor creamy pedas','batagor creamy']},
-    {code:'BC-BTKA',name:'Batagor Kaldu Ayam',unit:'pcs',harga:8000,berat:0,alias:['batagor kaldu ayam','batagor kaldu']},
-    {code:'BC-BTPS',name:'Batagor Pedas Super',unit:'pcs',harga:8000,berat:0,alias:['batagor pedas super','batagor pedas']},
+    {code:'BC-CCP',name:'Cuanki Creamy Pedas',unit:'pcs',harga:8000,berat:66,alias:['cuanki creamy pedas','cuanki creamy']},
+    {code:'BC-CKA',name:'Cuanki Kaldu Ayam',unit:'pcs',harga:8000,berat:66,alias:['cuanki kaldu ayam','cuanki kaldu']},
+    {code:'BC-CPS',name:'Cuanki Pedas Super',unit:'pcs',harga:8000,berat:66,alias:['cuanki pedas super','cuanki pedas']},
+    {code:'BC-BCP',name:'Bakso Creamy Pedas',unit:'pcs',harga:8000,berat:66,alias:['bakso creamy pedas','bakso creamy']},
+    {code:'BC-BKA',name:'Bakso Kaldu Ayam',unit:'pcs',harga:8000,berat:66,alias:['bakso kaldu ayam','bakso kaldu']},
+    {code:'BC-BPS',name:'Bakso Pedas Super',unit:'pcs',harga:8000,berat:66,alias:['bakso pedas super','bakso pedas']},
+    {code:'BC-BTCP',name:'Batagor Creamy Pedas',unit:'pcs',harga:8000,berat:66,alias:['batagor creamy pedas','batagor creamy']},
+    {code:'BC-BTKA',name:'Batagor Kaldu Ayam',unit:'pcs',harga:8000,berat:66,alias:['batagor kaldu ayam','batagor kaldu']},
+    {code:'BC-BTPS',name:'Batagor Pedas Super',unit:'pcs',harga:8000,berat:66,alias:['batagor pedas super','batagor pedas']},
     {code:'BC-BSR',name:'Basreng',unit:'kg',harga:44000,berat:1000,alias:['basreng']},
     {code:'BC-PLU',name:'Pilus',unit:'kg',harga:32500,berat:1000,alias:['pilus']},
     {code:'BC-SMY',name:'Siomay',unit:'kg',harga:48000,berat:1000,alias:['siomay','siomai']},
     {code:'BC-USU',name:'Usus',unit:'kg',harga:65000,berat:1000,alias:['usus']},
     {code:'BC-PGS',name:'Pangsit',unit:'kg',harga:50000,berat:1000,alias:['pangsit']},
-    {code:'BC-PB',name:'Paperbowl',unit:'pcs',harga:1800,berat:0,alias:['paperbowl','bowl']},
-    {code:'BC-TTP',name:'Tutup',unit:'pcs',harga:300,berat:0,alias:['tutup']},
-    {code:'BC-SDK',name:'Sendok Bebek',unit:'pcs',harga:200,berat:0,alias:['sendok bebek','sendok']},
+    {code:'BC-PB',name:'Paperbowl',unit:'pcs',harga:1800,berat:45,alias:['paperbowl','bowl']},
+    {code:'BC-TTP',name:'Tutup',unit:'pcs',harga:300,berat:6,alias:['tutup']},
+    {code:'BC-SDK',name:'Sendok Bebek',unit:'pcs',harga:200,berat:2,alias:['sendok bebek','sendok']},
     {code:'BC-SP',name:'Saus Pedas',unit:'kg',harga:29000,berat:1000,alias:['saus pedas']},
   ]},
 };
@@ -821,14 +825,18 @@ async function loadBrandsSync() {
     const rows = await sbGet('shared_config', "key=eq.cs_ro_brands");
     const hasCloudData = rows.length && rows[0].value &&
       Object.keys(rows[0].value).some(k => Array.isArray(rows[0].value[k]?.products) && rows[0].value[k].products.length>0);
-    if (!hasCloudData) throw new Error('Belum ada data produk di cloud');
-    const result = rows[0].value;
-    localStorage.setItem('brandsDB', JSON.stringify(result)); // cache offline-fallback saja
-    setSyncStatus('ok', 'Produk tersinkron');
-    return result;
+    if (hasCloudData) {
+      const result = rows[0].value;
+      localStorage.setItem('brandsDB', JSON.stringify(result)); // cache offline-fallback saja
+      setSyncStatus('ok', 'Produk tersinkron');
+      return result;
+    }
+    // Koneksi OK, tapi belum ada produk tersimpan di cloud — ini bukan masalah koneksi,
+    // melainkan database produk memang masih kosong (belum diisi di tools "Mitra & Produk").
+    setSyncStatus('error', 'Produk belum diisi di Mitra & Produk');
+    return loadBrandsLocal();
   } catch(e) {
-    // Tidak ada koneksi ke cloud sama sekali — pakai cache lokal TERAKHIR (bukan default statis),
-    // supaya semua tools tetap konsisten dengan apa yang pernah disinkronkan, bukan data acak per-browser.
+    // Benar-benar tidak bisa menghubungi server (internet putus / Supabase down)
     setSyncStatus('error', 'Offline — pakai cache terakhir');
     return loadBrandsLocal();
   }
@@ -1161,6 +1169,14 @@ function parseLine(line){
   line = line.trim();
   let qty = 1, str = line, rawUnit = '';
 
+  // FORMAT 0: "Nama Produk x3" atau "Nama Produk × 3" — qty harus di AKHIR baris untuk
+  // menghindari salah tangkap angka yang ada di tengah (mis. kode produk "NG-MM06").
+  const mTimes = line.match(/^(.+?)\s*[×x]\s*(\d+(?:[.,]\d+)?)\s*$/i);
+  if(mTimes){
+    const qtyVal = parseFloat(mTimes[2].replace(',','.'));
+    if(qtyVal > 0) return {qty:qtyVal, str:mTimes[1].trim(), rawUnit:''};
+  }
+
   // FORMAT 1: "Nama Produk : 150"  atau  "Nama Produk : 150kg"
   // Hanya match jika ada ANGKA setelah titik dua
   const mColon = line.match(/^(.+?)\s*:\s*(\d+(?:[.,]\d+)?)\s*(kg|gram|gr|pcs|pack|bks|ltr)?\s*$/i);
@@ -1485,13 +1501,15 @@ function renderTable(){
     const h=item.product?item.product.harga:0, sub=h*item.qty;
     let opts='<option value="">-- Pilih Manual --</option>';
     prods.forEach(p=>{ const sel=item.product&&item.product.code===p.code?'selected':''; opts+=`<option value="${p.code}" ${sel}>${p.name} (${p.unit}) – Rp${p.harga.toLocaleString('id')}</option>`; });
+    // Tandai baris yang produknya sama dengan baris lain (kemungkinan double-paste / OCR diulang)
+    const isDup = item.product && items.some((other,oidx)=>oidx!==idx && !other.removed && other.product && other.product.code===item.product.code);
     tr.innerHTML=`
-      <td><span class="tago">${item.original}</span><br>${ml}</td>
+      <td><span class="tago">${item.original}</span><br>${ml}${isDup?'<br><span class="mw" style="color:var(--warn);font-weight:700;">⚠️ Produk ini juga muncul di baris lain — cek dobel?</span>':''}</td>
       <td><select class="isel" onchange="chgP(${idx},this.value)">${opts}</select></td>
       <td><input type="number" min="0.1" step="0.1" value="${item.qty}" onchange="chgQ(${idx},this.value)" id="q${idx}"></td>
       <td id="u${idx}">${item.product?item.product.unit:'—'}</td>
       <td id="h${idx}">${h?'Rp'+h.toLocaleString('id'):'—'}</td>
-      <td id="sb${idx}" style="font-weight:600">${sub?'Rp'+sub.toLocaleString('id'):'—'}</td>
+      <td id="sb${idx}" style="font-weight:600;${isDup?'background:var(--wl);':''}">${sub?'Rp'+sub.toLocaleString('id'):'—'}</td>
       <td><button class="btn btn-rd btn-xs" onclick="rmRow(${idx})">✕</button></td>`;
     tb.appendChild(tr);
   });
@@ -1499,7 +1517,12 @@ function renderTable(){
   const um=items.filter(i=>!i.product&&!i.removed).length;
   // Hitung juga yang hanya mirip (warn) untuk ditampilkan
   const uw=items.filter(i=>!i.removed&&i.matched==='warn').length;
+  // Hitung produk yang muncul lebih dari sekali (rincian double) untuk peringatan ringkas di atas tabel
+  const codeCount={};
+  items.forEach(i=>{ if(!i.removed&&i.product) codeCount[i.product.code]=(codeCount[i.product.code]||0)+1; });
+  const dupCodes=Object.keys(codeCount).filter(c=>codeCount[c]>1);
   let alertHtml='';
+  if(dupCodes.length>0) alertHtml+=`<div class="al" style="background:var(--wl);border:1px solid var(--wb);color:var(--warn);margin-bottom:6px;">⚠️ <b>${dupCodes.length} produk muncul lebih dari sekali</b> di rincian (kemungkinan teks orderan/OCR ter-paste dobel) — baris yang ditandai kuning di bawah, cek dan hapus salah satunya kalau memang dobel.</div>`;
   if(um>0) alertHtml+=`<div class="al al-w" style="margin-bottom:6px;">❌ <b>${um} item tidak ditemukan</b> — pilih produk yang benar dari dropdown. Jangan lewati, karena ini tidak akan masuk ke order.</div>`;
   if(uw>0) alertHtml+=`<div class="al" style="background:#FFF7E6;border:1px solid #FDD;color:#B45309;margin-bottom:6px;">⚠️ <b>${uw} item mirip</b> — harap dicek kesesuaiannya sebelum lanjut.</div>`;
   document.getElementById('pAlert').innerHTML=alertHtml;
@@ -1546,14 +1569,16 @@ function getActive(){
     return{...item, qty:qe?(parseFloat(qe.value)||item.qty):item.qty};
   }).filter(Boolean).filter(i=>i.product);
 }
-// Hitung diskon berdasarkan setting
-function getDiskon(totalBeli){
+// Hitung diskon berdasarkan setting. base = nilai yang akan dipotong (total bahan baku ATAU ongkir,
+// tergantung target yang dipilih) — supaya persentase dihitung dari basis yang benar.
+function getDiskon(base){
   const type=document.getElementById('discountType')?.value||'none';
   const val=parseFloat(document.getElementById('discountVal')?.value)||0;
-  if(type==='none'||val<=0) return{amount:0,label:'',type:'none'};
-  if(type==='persen'){const amount=Math.round(totalBeli*val/100);return{amount,label:'Diskon '+val+'%',type:'persen'};}
-  if(type==='nominal'){return{amount:val,label:'Diskon Rp'+val.toLocaleString('id'),type:'nominal'};}
-  return{amount:0,label:'',type:'none'};
+  const target=document.getElementById('discountTarget')?.value||'bb';
+  if(type==='none'||val<=0) return{amount:0,label:'',type:'none',target};
+  if(type==='persen'){const amount=Math.round(base*val/100);return{amount,label:'Diskon '+val+'%',type:'persen',target};}
+  if(type==='nominal'){return{amount:Math.min(val,base),label:'Diskon Rp'+val.toLocaleString('id'),type:'nominal',target};}
+  return{amount:0,label:'',type:'none',target};
 }
 
 function calcFinal(){
@@ -1571,13 +1596,16 @@ function calcFinal(){
     }
   });
   const og=parseInt(document.getElementById('ongkir').value)||0;
-  const diskon=getDiskon(total);
-  const afterDiskon=Math.max(0,total-diskon.amount);
-  const grand=afterDiskon+og;
+  // Diskon dihitung dari basis sesuai target yang dipilih: bahan baku (total) atau ongkir
+  const target=document.getElementById('discountTarget')?.value||'bb';
+  const diskon=getDiskon(target==='ongkir'?og:total);
+  const afterDiskon = target==='ongkir' ? total : Math.max(0,total-diskon.amount);
+  const ongkirSetelahDiskon = target==='ongkir' ? Math.max(0,og-diskon.amount) : og;
+  const grand=afterDiskon+ongkirSetelahDiskon;
 
   document.getElementById('fsbox').style.display='block';
   document.getElementById('fT').textContent='Rp'+total.toLocaleString('id');
-  document.getElementById('fO').textContent='Rp'+og.toLocaleString('id');
+  document.getElementById('fO').textContent='Rp'+ongkirSetelahDiskon.toLocaleString('id')+(target==='ongkir'&&diskon.amount>0?' (sebelum diskon Rp'+og.toLocaleString('id')+')':'');
   document.getElementById('fG').textContent='Rp'+grand.toLocaleString('id');
   document.getElementById('fTotal').textContent='= Rp'+grand.toLocaleString('id');
   const beratKg=berat/1000;
@@ -1589,8 +1617,13 @@ function calcFinal(){
   const sr=document.getElementById('fSetelahDiskonRow');
   const dp=document.getElementById('discountPreview');
   if(diskon.amount>0){
-    if(dr){dr.style.display='flex';document.getElementById('fDiskonLabel').textContent=diskon.label;document.getElementById('fDiskon').textContent='-Rp'+diskon.amount.toLocaleString('id');}
-    if(sr){sr.style.display='flex';document.getElementById('fSetelahDiskon').textContent='Rp'+afterDiskon.toLocaleString('id');}
+    const targetLabel = target==='ongkir' ? ' (potong ongkir)' : ' (potong bahan baku)';
+    if(dr){dr.style.display='flex';document.getElementById('fDiskonLabel').textContent=diskon.label+targetLabel;document.getElementById('fDiskon').textContent='-Rp'+diskon.amount.toLocaleString('id');}
+    if(sr){
+      sr.style.display='flex';
+      const srLabel=sr.querySelector('span:first-child'); if(srLabel) srLabel.textContent = target==='ongkir' ? 'Ongkir Setelah Diskon' : 'Bahan Baku Setelah Diskon';
+      document.getElementById('fSetelahDiskon').textContent='Rp'+(target==='ongkir'?ongkirSetelahDiskon:afterDiskon).toLocaleString('id');
+    }
     if(dp) dp.textContent='Hemat Rp'+diskon.amount.toLocaleString('id');
   } else {
     if(dr) dr.style.display='none';
@@ -1658,15 +1691,18 @@ function genOutput(){
     fl.push(`${i.product.code} - ${i.product.name} - ${qty}${uStr} - Rp.${sub.toLocaleString('id')}`);
   });
   fl.push('');
-  const diskon=getDiskon(total);
-  const afterDiskon=Math.max(0,total-diskon.amount);
-  const grandTotal=afterDiskon+og;
+  const target=document.getElementById('discountTarget')?.value||'bb';
+  const diskon=getDiskon(target==='ongkir'?og:total);
+  const afterDiskon = target==='ongkir' ? total : Math.max(0,total-diskon.amount);
+  const ongkirSetelahDiskon = target==='ongkir' ? Math.max(0,og-diskon.amount) : og;
+  const grandTotal=afterDiskon+ongkirSetelahDiskon;
   fl.push(`Total Pembelian : Rp.${total.toLocaleString('id')}`);
   if(diskon.amount>0){
-    fl.push(`${diskon.label} : -Rp.${diskon.amount.toLocaleString('id')}`);
-    fl.push(`Setelah Diskon : Rp.${afterDiskon.toLocaleString('id')}`);
+    const targetLabel = target==='ongkir' ? ' (potong ongkir)' : ' (potong bahan baku)';
+    fl.push(`${diskon.label}${targetLabel} : -Rp.${diskon.amount.toLocaleString('id')}`);
+    if(target==='bb') fl.push(`Setelah Diskon : Rp.${afterDiskon.toLocaleString('id')}`);
   }
-  fl.push(`Ongkir : Rp.${og.toLocaleString('id')}`);
+  fl.push(`Ongkir : Rp.${ongkirSetelahDiskon.toLocaleString('id')}`);
   fl.push(`Total Pembayaran : Rp.${grandTotal.toLocaleString('id')}`);
   fl.push(`Total Pembayaran via : ${pay}`);
   fl.push(`Nama Pengirim TF : ${tf}`);
@@ -1685,17 +1721,15 @@ function genOutput(){
     ml.push(`• ${i.product.name} ${qty}${uStr} = Rp.${sub.toLocaleString('id')}`);
   });
   ml.push('');
-  const diskonWA=getDiskon(total);
-  const afterDiskonWA=Math.max(0,total-diskonWA.amount);
-  const grandWA=afterDiskonWA+og;
   ml.push(`💰 *Total Pembelian* : Rp.${total.toLocaleString('id')}`);
-  if(diskonWA.amount>0){
-    ml.push(`🏷️ *${diskonWA.label}* : -Rp.${diskonWA.amount.toLocaleString('id')}`);
-    ml.push(`✂️ *Setelah Diskon* : Rp.${afterDiskonWA.toLocaleString('id')}`);
+  if(diskon.amount>0){
+    const targetLabelWA = target==='ongkir' ? ' (potong ongkir)' : '';
+    ml.push(`🏷️ *${diskon.label}${targetLabelWA}* : -Rp.${diskon.amount.toLocaleString('id')}`);
+    if(target==='bb') ml.push(`✂️ *Setelah Diskon* : Rp.${afterDiskon.toLocaleString('id')}`);
   }
-  ml.push(`🚚 *Ongkir (${eksp})* : Rp.${og.toLocaleString('id')}`);
+  ml.push(`🚚 *Ongkir (${eksp})* : Rp.${ongkirSetelahDiskon.toLocaleString('id')}`);
   ml.push('━━━━━━━━━━━━━━━━━');
-  ml.push(`✅ *Total Pembayaran : Rp.${grandWA.toLocaleString('id')}*`);
+  ml.push(`✅ *Total Pembayaran : Rp.${grandTotal.toLocaleString('id')}*`);
   ml.push('');
   if(pay&&pay!=='—') ml.push(`Transfer via ${pay} a/n ${tf} ya kak 🙏`);
   ml.push('Segera konfirmasi setelah transfer ya kak, nanti langsung kami proses! 🙏');
@@ -1882,6 +1916,11 @@ function startNew(){
   document.getElementById('waText').value='';
   document.getElementById('pasteFormWA').value='';
   document.getElementById('ongkir').value='0';
+  // Diskon adalah pengaturan SEKALI PAKAI per draft — wajib direset di sini supaya tidak
+  // "nempel" mengikuti ke order baru selanjutnya.
+  const dT=document.getElementById('discountType'); if(dT) dT.value='none';
+  const dV=document.getElementById('discountVal'); if(dV) dV.value='0';
+  const dTg=document.getElementById('discountTarget'); if(dTg) dTg.value='bb';
   document.getElementById('mitraFilled').style.display='none';
   document.getElementById('rtBody').innerHTML='';
   document.getElementById('sbox').style.display='none';
@@ -1902,6 +1941,9 @@ function saveDraftSilent(){
   aktif.forEach(i=>{totalBeli+=i.product.harga*i.qty;berat+=i.product.berat*i.qty;});
   const ongkir=parseInt(document.getElementById('ongkir').value)||0;
   const existing = editId ? drafts.find(x=>x.id===editId) : null;
+  const diskonType=document.getElementById('discountType')?.value||'none';
+  const diskonVal=parseFloat(document.getElementById('discountVal')?.value)||0;
+  const diskonTarget=document.getElementById('discountTarget')?.value||'bb';
   const d={
     id:editId||Date.now().toString(),
     brand:curBrand,status:'draft',
@@ -1913,6 +1955,7 @@ function saveDraftSilent(){
     pay:   document.getElementById('f_pay')?.value||'',
     tf:    document.getElementById('f_tf')?.value||'',
     ongkir, waText:document.getElementById('waText').value,
+    diskonType, diskonVal, diskonTarget,
     items, totalBeli, berat, grandTotal:totalBeli+ongkir,
     savedAt:new Date().toISOString(),
     createdBy: existing?.createdBy || CURRENT_CS.nama || 'Tidak diketahui',
@@ -1945,6 +1988,10 @@ function loadDraft(id){
   }
   document.getElementById('ongkir').value   = d.ongkir||0;
   document.getElementById('waText').value   = d.waText||'';
+  // Diskon: muat ulang sesuai yang tersimpan di draft ini (atau reset ke default kalau draft lama belum punya field ini)
+  const dT=document.getElementById('discountType'); if(dT) dT.value=d.diskonType||'none';
+  const dV=document.getElementById('discountVal'); if(dV) dV.value=d.diskonVal||0;
+  const dTg=document.getElementById('discountTarget'); if(dTg) dTg.value=d.diskonTarget||'bb';
   document.querySelectorAll('.bb').forEach(e=>e.classList.remove('selected'));
   if(curBrand){ document.querySelector('.brand-'+curBrand)?.classList.add('selected'); document.getElementById('bb2').textContent=BRANDS[curBrand].label; document.getElementById('bb3').textContent=BRANDS[curBrand].label; }
   renderBrandLockUI(!!curBrand);
@@ -1967,6 +2014,9 @@ function saveDraft(status){
   aktif.forEach(i=>{totalBeli+=i.product.harga*i.qty;berat+=i.product.berat*i.qty;});
   const ongkir=parseInt(document.getElementById('ongkir').value)||0;
   const existing = editId ? drafts.find(x=>x.id===editId) : null;
+  const diskonType=document.getElementById('discountType')?.value||'none';
+  const diskonVal=parseFloat(document.getElementById('discountVal')?.value)||0;
+  const diskonTarget=document.getElementById('discountTarget')?.value||'bb';
   const d={
     id:editId||Date.now().toString(),
     brand:curBrand,status,
@@ -1978,6 +2028,7 @@ function saveDraft(status){
     pay:   document.getElementById('f_pay')?.value||'',
     tf:    document.getElementById('f_tf')?.value||'',
     ongkir,waText:document.getElementById('waText').value,
+    diskonType, diskonVal, diskonTarget,
     items,totalBeli,berat,grandTotal:totalBeli+ongkir,
     savedAt:new Date().toISOString(),
     createdBy: existing?.createdBy || CURRENT_CS.nama || 'Tidak diketahui',
@@ -2537,15 +2588,18 @@ function renderRekap(){
   let totalBeli=0,beratT=0;
   rows.forEach(r=>{if(r.qty>0){totalBeli+=r.total;beratT+=r.berat*r.qty;}});
   const ongkir=parseInt(d.ongkir)||0;
+  const diskonTargetRekap = d.diskonTarget||'bb';
   const diskonRekap=(()=>{
     const type=d.diskonType||'none',val=parseFloat(d.diskonVal)||0;
+    const base = diskonTargetRekap==='ongkir' ? ongkir : totalBeli;
     if(type==='none'||val<=0) return{amount:0,label:''};
-    if(type==='persen'){const a=Math.round(totalBeli*val/100);return{amount:a,label:'Diskon '+val+'%'};}
-    if(type==='nominal'){return{amount:val,label:'Diskon Rp'+val.toLocaleString('id')};}
+    if(type==='persen'){const a=Math.round(base*val/100);return{amount:a,label:'Diskon '+val+'%'};}
+    if(type==='nominal'){return{amount:Math.min(val,base),label:'Diskon Rp'+val.toLocaleString('id')};}
     return{amount:0,label:''};
   })();
-  const afterDiskonRekap=Math.max(0,totalBeli-diskonRekap.amount);
-  const grand=afterDiskonRekap+ongkir;
+  const afterDiskonRekap = diskonTargetRekap==='ongkir' ? totalBeli : Math.max(0,totalBeli-diskonRekap.amount);
+  const ongkirSetelahDiskonRekap = diskonTargetRekap==='ongkir' ? Math.max(0,ongkir-diskonRekap.amount) : ongkir;
+  const grand=afterDiskonRekap+ongkirSetelahDiskonRekap;
   const date=d.savedAt?new Date(d.savedAt).toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'}):'';
   const sbadge=d.status==='done'?'<span class="dst s-ok">✅ Lunas</span>':'<span class="dst s-d">⏳ Menunggu</span>';
   const tRows=rows.map(r=>r.qty<=0
@@ -2569,10 +2623,12 @@ function renderRekap(){
           <tbody>${tRows}</tbody>
           <tfoot>
             <tr class="sub-row"><td colspan="4" style="text-align:right;font-weight:700">TOTAL PEMBELIAN</td><td class="r">Rp ${totalBeli.toLocaleString('id')}</td></tr>
-            ${diskonRekap.amount>0?`
-            <tr class="sub-row" style="color:var(--red)"><td colspan="4" style="text-align:right">${diskonRekap.label}</td><td class="r">-Rp ${diskonRekap.amount.toLocaleString('id')}</td></tr>
+            ${diskonRekap.amount>0 && diskonTargetRekap==='bb'?`
+            <tr class="sub-row" style="color:var(--red)"><td colspan="4" style="text-align:right">${diskonRekap.label} (potong bahan baku)</td><td class="r">-Rp ${diskonRekap.amount.toLocaleString('id')}</td></tr>
             <tr class="sub-row"><td colspan="4" style="text-align:right">Setelah Diskon</td><td class="r">Rp ${afterDiskonRekap.toLocaleString('id')}</td></tr>`:''}
-            <tr class="sub-row"><td colspan="4" style="text-align:right">Ongkir</td><td class="r">Rp ${ongkir.toLocaleString('id')}</td></tr>
+            <tr class="sub-row"><td colspan="4" style="text-align:right">Ongkir</td><td class="r">Rp ${ongkirSetelahDiskonRekap.toLocaleString('id')}${diskonRekap.amount>0 && diskonTargetRekap==='ongkir'?' (sebelum diskon Rp'+ongkir.toLocaleString('id')+')':''}</td></tr>
+            ${diskonRekap.amount>0 && diskonTargetRekap==='ongkir'?`
+            <tr class="sub-row" style="color:var(--red)"><td colspan="4" style="text-align:right">${diskonRekap.label} (potong ongkir)</td><td class="r">-Rp ${diskonRekap.amount.toLocaleString('id')}</td></tr>`:''}
             <tr class="tot-row"><td colspan="4" style="text-align:right">TOTAL PEMBAYARAN</td><td class="r">Rp ${grand.toLocaleString('id')}</td></tr>
           </tfoot>
         </table>
@@ -2598,10 +2654,27 @@ function copyFormWA(id){
   lines.push('');
   lines.push('Rincian orderan bahan baku :');
   aktif.forEach(i=>{const qty=parseFloat(i.qty)||0;const sub=i.product.harga*qty;total+=sub;lines.push(`${i.product.code} - ${i.product.name} - ${qty}${i.product.unit!=='pcs'?' '+i.product.unit:''} - Rp.${sub.toLocaleString('id')}`);});
-  const og=parseInt(d.ongkir)||0,grand=total+og;
+  const og=parseInt(d.ongkir)||0;
+  const diskonTargetWA = d.diskonTarget||'bb';
+  const diskonWA=(()=>{
+    const type=d.diskonType||'none',val=parseFloat(d.diskonVal)||0;
+    const base = diskonTargetWA==='ongkir' ? og : total;
+    if(type==='none'||val<=0) return{amount:0,label:''};
+    if(type==='persen'){const a=Math.round(base*val/100);return{amount:a,label:'Diskon '+val+'%'};}
+    if(type==='nominal'){return{amount:Math.min(val,base),label:'Diskon Rp'+val.toLocaleString('id')};}
+    return{amount:0,label:''};
+  })();
+  const afterDiskonWA = diskonTargetWA==='ongkir' ? total : Math.max(0,total-diskonWA.amount);
+  const ogSetelahDiskonWA = diskonTargetWA==='ongkir' ? Math.max(0,og-diskonWA.amount) : og;
+  const grand=afterDiskonWA+ogSetelahDiskonWA;
   lines.push('');
   lines.push(`Total Pembelian : Rp.${total.toLocaleString('id')}`);
-  lines.push(`Ongkir : Rp.${og.toLocaleString('id')}`);
+  if(diskonWA.amount>0){
+    const targetLabelWA = diskonTargetWA==='ongkir' ? ' (potong ongkir)' : ' (potong bahan baku)';
+    lines.push(`${diskonWA.label}${targetLabelWA} : -Rp.${diskonWA.amount.toLocaleString('id')}`);
+    if(diskonTargetWA==='bb') lines.push(`Setelah Diskon : Rp.${afterDiskonWA.toLocaleString('id')}`);
+  }
+  lines.push(`Ongkir : Rp.${ogSetelahDiskonWA.toLocaleString('id')}`);
   lines.push(`Total Pembayaran : Rp.${grand.toLocaleString('id')}`);
   lines.push(`Total Pembayaran via : ${d.pay||'—'}`);
   lines.push(`Nama Pengirim TF : ${d.tf||'—'}`);
@@ -2772,7 +2845,14 @@ async function extractTextFromImage(){
     const text = (data.content||[]).find(b=>b.type==='text')?.text||'';
     if(!text) throw new Error('Tidak ada teks terdeteksi');
     const waEl = document.getElementById('waText');
-    waEl.value = (waEl.value?waEl.value+'\n':'')+text.trim();
+    // Kalau textarea sudah ada isi sebelumnya, tanya dulu — supaya tidak diam-diam menumpuk
+    // teks yang sama dan menyebabkan item terdeteksi dobel saat diproses.
+    if(waEl.value.trim()){
+      const replace = confirm('Kotak teks orderan sudah ada isi sebelumnya.\n\nOK = Ganti dengan hasil baca gambar ini\nBatal = Tambahkan di bawah teks yang sudah ada');
+      waEl.value = replace ? text.trim() : (waEl.value+'\n'+text.trim());
+    } else {
+      waEl.value = text.trim();
+    }
     status.textContent='✅ Berhasil! Klik Proses Otomatis.';
     status.style.color='var(--green)';
     toast('✅ Teks berhasil dibaca dari gambar!');
@@ -2896,6 +2976,18 @@ function resetEksp(){
 
 // INIT
 // =========================================================
+// Sembunyikan kartu brand yang dinonaktifkan dari Pengaturan Brand (Mitra & Produk).
+// Brand nonaktif tidak hilang datanya, hanya tidak bisa dipilih untuk order baru.
+function applyBrandVisibility(){
+  document.querySelectorAll('.bb[class*="brand-"]').forEach(el=>{
+    const m = el.className.match(/brand-(\w+)/);
+    if(!m) return;
+    const key = m[1];
+    const isDisabled = BRANDS[key]?.disabled;
+    el.style.display = isDisabled ? 'none' : '';
+  });
+}
+
 async function init() {
   updateEkspDropdowns(); // sinkron dropdown dengan data tersimpan
   setDateRange('all'); // render drafts + set filter tanggal default
@@ -2907,15 +2999,10 @@ async function init() {
   startPolling();
 
   // Sinkronisasi mitra & produk — produk SELALU dari tools "Mitra & Produk" (sumber tunggal)
-  setSyncStatus('loading', 'Menghubungkan ke database...');
   await loadMitraSync();
-  try {
-    const loadedBrands = await loadBrandsSync();
-    BRANDS = normalizeBrandProducts(loadedBrands);
-    setSyncStatus('ok', '✓ Semua data tersinkron');
-  } catch(e) {
-    setSyncStatus('error', 'Produk pakai data lokal: ' + e.message);
-  }
+  const loadedBrands = await loadBrandsSync(); // fungsi ini sudah set status sendiri (ok/error+alasan)
+  BRANDS = normalizeBrandProducts(loadedBrands);
+  applyBrandVisibility();
 
   // Sinkronisasi daftar ekspedisi
   await loadEkspListRemote();
@@ -2930,7 +3017,7 @@ async function init() {
       const rb = await loadBrandsSync();
       if(rb){
         const merged = normalizeBrandProducts(rb);
-        if(JSON.stringify(merged)!==prevBrandsJSON) BRANDS = merged;
+        if(JSON.stringify(merged)!==prevBrandsJSON){ BRANDS = merged; applyBrandVisibility(); }
       }
     }catch(e){ /* loadMitraSync/loadBrandsSync sudah handle status sendiri */ }
   }, 30000);
