@@ -1879,7 +1879,14 @@ function calcFinal(){
   }
 }
 function isPorsiItem(p){
-  return p && normalizeUnit(p.unit||'')==='pcs' && (p.kategori||inferKategori(p))==='bahan baku';
+  if(!p || normalizeUnit(p.unit||'')!=='pcs') return false;
+  // Bandingkan kategori tanpa peduli huruf besar/kecil atau spasi berlebih —
+  // data kategori produk di cloud (dikelola dari tools "Mitra & Produk") bisa
+  // punya variasi penulisan (mis. "Bahan Baku") yang bikin porsi Gokuah/Yamie/
+  // Bacigor gagal kehitung kalau dibandingkan dengan string persis 'bahan baku'.
+  const kat = String(p.kategori||inferKategori(p)).trim().toLowerCase();
+  const nonPorsi = ['kemasan','perlengkapan','saus','bumbu'];
+  return !nonPorsi.includes(kat);
 }
 function sortByKategori(arr){
   const order = KATEGORI_LIST; // ['bahan baku','saus','bumbu','kemasan','perlengkapan']
@@ -2400,12 +2407,15 @@ function renderDrafts(){
       const draftPorsi=(d.items||[]).filter(i=>!i.removed&&isPorsiItem(i.product)).reduce((s,i)=>s+(parseFloat(i.qty)||0),0);
       const mine = canEditDraft(d);
       const csBadge = d.createdBy ? `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:${mine?'#EBF7F0':'#F7F6F2'};color:${mine?'#1A8A4A':'#6B6860'};white-space:nowrap;">👤 ${d.createdBy}</span>` : '';
+      const hasDiskon = d.diskonType && d.diskonType!=='none' && (parseFloat(d.diskonVal)||0)>0;
+      const diskonBadge = hasDiskon ? `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:#FEF2F2;color:var(--red);white-space:nowrap;">🏷️ Diskon</span>` : '';
       html+=`<div class="dc">
         <div class="dav" style="background:${b.color}20;color:${b.color}">${init}</div>
         <div class="di">
           <div class="dn">${d.nama||'—'} <span style="font-size:11px;color:var(--text3);font-weight:400">${d.kode?'['+d.kode+']':''}</span></div>
           <div class="dm">${b.label} · Rp${(d.grandTotal||0).toLocaleString('id')}${draftPorsi>0?' · '+draftPorsi+' porsi':''} · ${dt}</div>
         </div>
+        ${diskonBadge}
         ${csBadge}
         ${sb}
         <div class="dac">
