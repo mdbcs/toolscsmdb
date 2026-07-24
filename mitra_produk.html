@@ -1251,7 +1251,7 @@ async function loadMitraSync(opts) {
 
   if(!silent) setSyncStatus('loading', 'Memuat mitra...');
   try {
-    const rows = await sbGet('cs_ro_mitra', 'select=*&order=created_at.desc');
+    const rows = await sbGetAll('cs_ro_mitra', 'select=*&order=created_at.desc');
 
     if (!Array.isArray(rows)) throw new Error('Format data tidak valid (bukan array)');
 
@@ -1328,6 +1328,46 @@ async function sbGet(t,p=''){
     console.error('sbGet error:', t, p, err.message);
     throw err;
   }
+}
+
+// sbGetAll: sama seperti sbGet, tapi otomatis paginasi pakai header Range.
+// PostgREST (Supabase) membatasi setiap request maksimal 1000 baris secara default,
+// jadi kalau data > 1000, kita tarik per-halaman (1000 baris) sampai habis.
+async function sbGetAll(t, p='', pageSize=1000){
+  let all = [];
+  let from = 0;
+  while(true){
+    const to = from + pageSize - 1;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(()=>controller.abort(), 15000);
+    let page;
+    try {
+      const r = await fetch(`${SB_URL}/rest/v1/${t}?${p}`, {
+        headers: { ...SB_HDR, 'Range-Unit': 'items', 'Range': `${from}-${to}` },
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      if(!r.ok && r.status !== 206){
+        const errText = await r.text();
+        console.error('sbGetAll failed:', t, p, 'status:', r.status, errText);
+        throw new Error(`HTTP ${r.status}: ${errText}`);
+      }
+      page = await r.json();
+    } catch(err) {
+      clearTimeout(timeoutId);
+      if(err.name === 'AbortError') {
+        console.error('sbGetAll timeout:', t, p, 'from:', from);
+        throw new Error('Koneksi timeout — cek RLS policy Supabase atau koneksi internet');
+      }
+      console.error('sbGetAll error:', t, p, err.message);
+      throw err;
+    }
+    if (!Array.isArray(page)) throw new Error('Format data tidak valid (bukan array)');
+    all = all.concat(page);
+    if (page.length < pageSize) break; // halaman terakhir
+    from += pageSize;
+  }
+  return all;
 }
 async function sbPost(t,b){const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:SB_HDR,body:JSON.stringify(b)});if(!r.ok)throw new Error(await r.text());return r.json();}
 async function sbUpsert(t,b){const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:{...SB_HDR,'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(b)});if(!r.ok)throw new Error(await r.text());return r.json();}

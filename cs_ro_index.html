@@ -1924,9 +1924,7 @@ function genOutput(){
   aktif.forEach(i=>{
     const qty=parseFloat(i.qty)||0;
     const sub=i.product.harga*qty;
-    const u=normalizeUnit(i.product.unit||'');
-    const uStr=u==='pcs'?'':' '+u;
-    fl.push(`[${i.product.code}] - ${i.product.name} - ${qty}${uStr} - Rp.${sub.toLocaleString('id')}`);
+    fl.push(`[${i.product.code}] - ${i.product.name} - ${qty} - Rp.${sub.toLocaleString('id')}`);
   });
   fl.push('');
   const target=document.getElementById('discountTarget')?.value||'bb';
@@ -1954,9 +1952,7 @@ function genOutput(){
   aktif.forEach(i=>{
     const qty=parseFloat(i.qty)||0;
     const sub=i.product.harga*qty;
-    const u=normalizeUnit(i.product.unit||'');
-    const uStr=u==='pcs'?'':' '+u;
-    ml.push(`• ${i.product.name} ${qty}${uStr} = Rp.${sub.toLocaleString('id')}`);
+    ml.push(`• ${i.product.name} ${qty} = Rp.${sub.toLocaleString('id')}`);
   });
   ml.push('');
   ml.push(`💰 *Total Pembelian* : Rp.${total.toLocaleString('id')}`);
@@ -2894,7 +2890,7 @@ function copyFormWA(id){
   lines.push(`Alamat : ${d.alamat||'—'}`);
   lines.push('');
   lines.push('Rincian orderan bahan baku :');
-  aktif.forEach(i=>{const qty=parseFloat(i.qty)||0;const sub=i.product.harga*qty;total+=sub;lines.push(`[${i.product.code}] - ${i.product.name} - ${qty}${i.product.unit!=='pcs'?' '+i.product.unit:''} - Rp.${sub.toLocaleString('id')}`);});
+  aktif.forEach(i=>{const qty=parseFloat(i.qty)||0;const sub=i.product.harga*qty;total+=sub;lines.push(`[${i.product.code}] - ${i.product.name} - ${qty} - Rp.${sub.toLocaleString('id')}`);});
   const og=parseInt(d.ongkir)||0;
   const diskonTargetWA = d.diskonTarget||'bb';
   const diskonWA=(()=>{
