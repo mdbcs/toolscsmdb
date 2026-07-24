@@ -240,6 +240,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   #sjPrintArea{display:block;position:absolute;top:0;left:0;width:100%;}
   .sj-page,.lb-page{box-shadow:none;}
   .sj-page:last-child,.lb-page:last-child{page-break-after:auto;}
+  #rContainer, #rContainer *{visibility:visible;}
+  #rContainer{display:block;position:absolute;top:0;left:0;width:100%;}
 }
 </style>
 </head>
@@ -2821,7 +2823,7 @@ function renderRekap(){
   const b=BRANDS[d.brand]; const allP=b?b.products:[];
   const aktif=(d.items||[]).filter(i=>!i.removed&&i.product);
   const imap={}; aktif.forEach(i=>{imap[i.product.code]={p:i.product,qty:parseFloat(i.qty)||0};});
-  let rows=allP.map(p=>{const o=imap[p.code];const qty=o?o.qty:0;return{...p,qty,total:qty*p.harga};});
+  let rows=allP.map(p=>{const o=imap[p.code];const qty=o?o.qty:0;return{...p,qty,total:qty*p.harga};}).filter(r=>r.qty>0);
   let totalBeli=0,beratT=0;
   rows.forEach(r=>{if(r.qty>0){totalBeli+=r.total;beratT+=r.berat*r.qty;}});
   const ongkir=parseInt(d.ongkir)||0;
