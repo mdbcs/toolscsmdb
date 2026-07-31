@@ -460,6 +460,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
   <div class="nav-logo">🏪 Admin Tools</div>
   <div class="nav-item active" id="nav-verif" onclick="showPanel('verif')">🔎 Verifikasi</div>
   <div class="nav-item" id="nav-cekberat" onclick="showPanel('cekberat')">⚖️ Cek Berat</div>
+  <div class="nav-item" id="nav-cekongkir" onclick="showPanel('cekongkir')">🚚 Cek Ongkir CS RO</div>
   <div class="nav-item" id="nav-draft" onclick="showPanel('draft')">📋 Draft <span class="nav-badge" id="draftBadge">0</span></div>
   <div class="nav-item" id="nav-deposit" onclick="showPanel('deposit')">💰 Deposit</div>
   <div class="nav-item" id="nav-marketing" onclick="showPanel('marketing')">👤 Marketing</div>
@@ -782,6 +783,50 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
       </div>
     </div>
   </div>
+  </div>
+</div>
+
+<!-- ==================== PANEL: CEK ONGKIR CS RO ==================== -->
+<div class="panel" id="panel-cekongkir">
+  <div style="margin-bottom:12px;">
+    <div style="font-size:14px;font-weight:700;">🚚 Cek Ongkir — Double Check dari Form CS RO</div>
+    <div style="font-size:12px;color:var(--text2);margin-top:2px;">Menarik data order yang sudah dibuat CS RO (repeat order bahan baku). Cek berat &amp; ongkir yang ditagihkan ke mitra di sini sebelum kirim, lalu salin ke spreadsheet.</div>
+  </div>
+  <div class="al al-i">💡 Kolom <b>Berat</b> dan <b>Mitra Bayar</b> bisa diedit langsung untuk koreksi manual — perubahan tersimpan otomatis dan tidak mengubah data asli di CS RO. Centang ✅ kalau ongkir sudah dicek &amp; sesuai.</div>
+
+  <div class="filter-row">
+    <input type="text" id="cko_q" placeholder="Cari nama mitra..." oninput="renderCekOngkir()" style="min-width:180px;">
+    <select id="cko_brand" onchange="renderCekOngkir()">
+      <option value="">Semua Brand</option>
+      <option value="ngemiloh">Ngemiloh</option>
+      <option value="melumer">Melumer</option>
+      <option value="gokuah">Gokuah</option>
+      <option value="yamie">Yamie Curry</option>
+      <option value="bacigor">Bacigor Mamang</option>
+    </select>
+    <select id="cko_status" onchange="renderCekOngkir()">
+      <option value="">Semua Status</option>
+      <option value="belum">⏳ Belum dicek</option>
+      <option value="sudah">✅ Sudah dicek</option>
+    </select>
+    <input type="date" id="cko_from" onchange="renderCekOngkir()">
+    <input type="date" id="cko_to" onchange="renderCekOngkir()">
+    <button class="btn btn-o btn-sm" onclick="pullCekOngkirData()">🔄 Refresh dari CS RO</button>
+    <button class="btn btn-p btn-sm" onclick="copyCekOngkirSpreadsheet()">📋 Copy untuk Spreadsheet</button>
+  </div>
+
+  <div id="cko_summary" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;"></div>
+
+  <div class="card" style="padding:0;overflow:hidden;">
+    <div style="overflow-x:auto;">
+      <table class="tbl">
+        <thead><tr>
+          <th></th><th>Tanggal</th><th>Nama Mitra</th><th>Order</th><th>Ekspedisi</th>
+          <th class="r">Berat (kg)</th><th class="r">Mitra Bayar (Ongkir)</th><th></th>
+        </tr></thead>
+        <tbody id="cko_body"><tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text3)">⏳ Memuat data dari CS RO...</td></tr></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -1811,12 +1856,13 @@ function saveAll(){
 // STATE (VERIF)
 // =========================================================
 let payType = '', bbItems = [], curPaket = null, curState = null;
+let editingDraftId = null; // id draft yang sedang diedit; null = draft baru
 
 // =========================================================
 // NAV
 // =========================================================
 function showPanel(p){
-  ['verif','cekberat','draft','deposit','marketing','produk','paket','cetak'].forEach(x=>{
+  ['verif','cekberat','cekongkir','draft','deposit','marketing','produk','paket','cetak'].forEach(x=>{
     document.getElementById('panel-'+x)?.classList.toggle('active',x===p);
     const nav=document.getElementById('nav-'+x);
     if(nav) nav.classList.toggle('active',x===p);
@@ -1827,6 +1873,7 @@ function showPanel(p){
   if(p==='produk')    renderProduk();
   if(p==='paket')     renderPaketBrand();
   if(p==='cetak')     renderCetakList();
+  if(p==='cekongkir') pullCekOngkirData();
   updBadges();
 }
 
@@ -1889,6 +1936,7 @@ function clearAll(){
    'ongkirBB','totalFormMarketing','nominalDP','dpSebelumnya','nominalPelunasan',
    'marketing','catatanAdmin'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   curPaket=null; payType=''; bbItems=[];
+  editingDraftId=null;
   document.getElementById('includePacking').checked=false;
   ['ptab-L','ptab-DP','ptab-PL'].forEach(id=>document.getElementById(id).className='ptab');
   document.getElementById('dpSection').classList.add('hidden');
@@ -2155,6 +2203,7 @@ function genOutput(s){
   ];
   if(s.bbTotal>0){
     s.bbItems.forEach(i=>{ lines.push(`+ ${i.produk?.name||'BB'} ×${i.qty}      : Rp${((i.produk?.harga||0)*i.qty).toLocaleString('id')}`); });
+    lines.push(`Total Tambahan BB   : Rp${s.bbTotal.toLocaleString('id')}`);
   }
   lines.push(`Ongkir Normal       : Rp${(s.ongkirBooth||0).toLocaleString('id')}`);
   if(s.subsidi>0) lines.push(`− Potongan Subsidi  : Rp${s.subsidi.toLocaleString('id')}`);
@@ -2194,18 +2243,25 @@ function copyOutput(){
 // =========================================================
 function saveDraft(){
   if(!curState){ toast('⚠️ Hitung dulu form mitra!'); return; }
+  const existing = editingDraftId ? drafts.find(d=>d.id===editingDraftId) : null;
   const draft={
-    id: Date.now().toString(),
+    id: editingDraftId || Date.now().toString(),
     savedAt: new Date().toISOString(),
     ...curState,
-    aktual_berat: null,
-    createdBy: CURRENT_CS.nama || 'Tidak diketahui',
+    aktual_berat: existing ? (existing.aktual_berat ?? null) : null,
+    createdBy: existing ? (existing.createdBy || CURRENT_CS.nama || 'Tidak diketahui') : (CURRENT_CS.nama || 'Tidak diketahui'),
   };
-  drafts.unshift(draft);
+  if(existing){
+    const idx=drafts.findIndex(d=>d.id===editingDraftId);
+    if(idx>=0) drafts[idx]=draft; else drafts.unshift(draft);
+  } else {
+    drafts.unshift(draft);
+  }
+  editingDraftId = draft.id; // klik simpan lagi setelah ini akan memperbarui draft yang sama, bukan bikin baru
   LSSet('adm_drafts', drafts);
   updBadges();
   pushDraftToCloud(draft);
-  toast('💾 Draft tersimpan!');
+  toast(existing ? '💾 Draft diperbarui!' : '💾 Draft tersimpan!');
 }
 
 // =========================================================
@@ -2487,6 +2543,7 @@ function viewDraft(id){
       <tbody>
         <tr><td>Harga Paket</td><td class="r">Rp${(d.hargaSistem||0).toLocaleString('id')}</td></tr>
         ${(d.bbItems&&d.bbItems.length)?d.bbItems.map(i=>`<tr><td style="padding-left:18px;font-size:12px;color:var(--text2)">+ ${i.produk?.name||'Bahan Baku'} ×${i.qty}</td><td class="r" style="font-size:12px;color:var(--text2)">Rp${((i.produk?.harga||0)*i.qty).toLocaleString('id')}</td></tr>`).join(''):''}
+        ${d.bbTotal>0?`<tr><td style="padding-left:18px;font-weight:700;">Total Tambahan Bahan Baku</td><td class="r" style="font-weight:700;">Rp${d.bbTotal.toLocaleString('id')}</td></tr>`:''}
         <tr><td>Ongkir Normal</td><td class="r">Rp${(d.ongkirBooth||0).toLocaleString('id')}</td></tr>
         ${d.subsidi>0?`<tr><td style="color:var(--red)">− Potongan Subsidi</td><td class="r" style="color:var(--red)">−Rp${d.subsidi.toLocaleString('id')}</td></tr>`:''}
         ${d.packing>0?`<tr><td style="color:var(--warn)">+ Packing Kayu</td><td class="r" style="color:var(--warn)">Rp${d.packing.toLocaleString('id')}</td></tr>`:''}
@@ -2580,6 +2637,7 @@ function loadDraftToVerif(id){
   const d=drafts.find(x=>x.id===id);if(!d)return;
   if(!canEditDraft(d)){ toast('🔒 Ini draft milik '+(d.createdBy||'admin lain')+'. Hubungi owner untuk akses edit.'); viewDraft(id); return; }
   clearAll();
+  editingDraftId=id;
   document.getElementById('brand').value=d.brand||''; onBrandChange();
   document.getElementById('nama').value=d.nama||'';
   document.getElementById('hp').value=d.hp||'';
@@ -2605,6 +2663,7 @@ function delDraft(id){
   if(d && !canEditDraft(d)){ toast('🔒 Tidak bisa menghapus draft milik '+(d.createdBy||'admin lain')); return; }
   if(!confirm('Hapus draft ini?')) return;
   drafts=drafts.filter(x=>x.id!==id); LSSet('adm_drafts',drafts);
+  if(editingDraftId===id) editingDraftId=null;
   deleteDraftFromCloud(id);
   renderDrafts(); updBadges(); toast('🗑 Draft dihapus.');
 }
@@ -3514,6 +3573,161 @@ function autoDetectCekBerat(){
   toast(`✅ ${detected.length} produk terdeteksi, ${notFound.length} tidak ditemukan`);
 }
 
+// =========================================================
+// PANEL: CEK ONGKIR CS RO — double-check berat & ongkir dari form CS RO
+// yang sudah jadi, sebelum ditagihkan ke mitra. Data ditarik langsung dari
+// tabel 'cs_ro_drafts' (dibuat oleh tools CS RO), hanya untuk dibaca +
+// koreksi manual (override berat/ongkir/status verifikasi disimpan terpisah
+// di shared_config supaya TIDAK mengubah data asli CS RO).
+// =========================================================
+let ckoRows = [];        // gabungan draft CS RO + override lokal admin
+let ckoOverrides = {};   // { [draftId]: {berat, ongkir, checked} }
+const CKO_OVERRIDE_KEY = 'admin_cek_ongkir_overrides';
+
+async function loadCkoOverrides(){
+  try{
+    const rows = await sbGet('shared_config', 'key=eq.'+CKO_OVERRIDE_KEY);
+    ckoOverrides = (rows[0] && rows[0].value) || {};
+  }catch(e){ ckoOverrides = ckoOverrides || {}; console.warn('Gagal memuat koreksi cek ongkir:', e.message); }
+}
+
+async function saveCkoOverrides(){
+  try{ await sbUpsert('shared_config', { key: CKO_OVERRIDE_KEY, value: ckoOverrides, updated_at: new Date().toISOString() }); }
+  catch(e){ console.warn('Gagal menyimpan koreksi cek ongkir:', e.message); }
+}
+
+async function pullCekOngkirData(){
+  const body=document.getElementById('cko_body');
+  if(body) body.innerHTML='<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text3)">⏳ Memuat data dari CS RO...</td></tr>';
+  try{
+    const [roDrafts] = await Promise.all([
+      sbGet('cs_ro_drafts','select=*&order=saved_at.desc'),
+      loadCkoOverrides(),
+    ]);
+    ckoRows = roDrafts;
+    renderCekOngkir();
+    toast('✅ '+roDrafts.length+' order CS RO dimuat');
+  }catch(e){
+    if(body) body.innerHTML=`<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--red)">⚠️ Gagal memuat data CS RO: ${e.message}</td></tr>`;
+  }
+}
+
+function ckoOverride(id){ return ckoOverrides[id] || {}; }
+
+function ckoBeratKg(d){
+  const ov=ckoOverride(d.id);
+  if(ov.berat!=null) return ov.berat;
+  return d.berat ? +(d.berat/1000).toFixed(2) : 0;
+}
+function ckoOngkir(d){
+  const ov=ckoOverride(d.id);
+  if(ov.ongkir!=null) return ov.ongkir;
+  return d.ongkir||0;
+}
+function ckoOrderLabel(d){
+  const items=(d.items||[]).filter(i=>!i.removed);
+  const isRepeat = items.length>0;
+  return isRepeat ? 'REPEAT ORDER' : (BRAND_LABEL[d.brand]||d.brand||'—').toUpperCase();
+}
+
+function renderCekOngkir(){
+  const q=(document.getElementById('cko_q')?.value||'').toLowerCase();
+  const brand=document.getElementById('cko_brand')?.value||'';
+  const statusF=document.getElementById('cko_status')?.value||'';
+  const from=document.getElementById('cko_from')?.value||'';
+  const to=document.getElementById('cko_to')?.value||'';
+  let list=[...ckoRows];
+  if(q) list=list.filter(d=>(d.nama||'').toLowerCase().includes(q));
+  if(brand) list=list.filter(d=>d.brand===brand);
+  if(from) list=list.filter(d=>d.saved_at && d.saved_at.slice(0,10)>=from);
+  if(to)   list=list.filter(d=>d.saved_at && d.saved_at.slice(0,10)<=to);
+  if(statusF) list=list.filter(d=>{
+    const checked=!!ckoOverride(d.id).checked;
+    return statusF==='sudah' ? checked : !checked;
+  });
+
+  const body=document.getElementById('cko_body');
+  const sumEl=document.getElementById('cko_summary');
+  if(!list.length){
+    body.innerHTML='<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text3)">Tidak ada order ditemukan.</td></tr>';
+    if(sumEl) sumEl.innerHTML='';
+    return;
+  }
+
+  let totalBerat=0, totalOngkir=0, totalChecked=0;
+  body.innerHTML=list.map(d=>{
+    const bc=BRAND_COLOR[d.brand]||'#888';
+    const berat=ckoBeratKg(d), ongkir=ckoOngkir(d), checked=!!ckoOverride(d.id).checked;
+    totalBerat+=berat; totalOngkir+=ongkir; if(checked) totalChecked++;
+    const tgl=d.saved_at?new Date(d.saved_at).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'}):'—';
+    return `<tr style="${checked?'background:var(--gl)':''}">
+      <td style="text-align:center"><input type="checkbox" ${checked?'checked':''} onchange="ckoSetChecked('${d.id}',this.checked)" style="width:16px;height:16px;cursor:pointer;"></td>
+      <td style="white-space:nowrap;font-size:12px">${tgl}</td>
+      <td style="font-weight:700">${d.nama||'—'}<div style="font-size:10px;color:var(--text3);font-weight:400">${d.kode||''}</div></td>
+      <td><span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:${bc}18;color:${bc}">${ckoOrderLabel(d)}</span><div style="font-size:10px;color:var(--text3);margin-top:2px">${BRAND_LABEL[d.brand]||d.brand||''}</div></td>
+      <td style="font-size:12px">${d.eksp||'—'}</td>
+      <td class="r"><input type="number" step="0.01" value="${berat}" onchange="ckoSetBerat('${d.id}',this.value)" style="width:75px;border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-family:inherit;font-size:12px;text-align:right;"></td>
+      <td class="r"><input type="number" step="1000" value="${ongkir}" onchange="ckoSetOngkir('${d.id}',this.value)" style="width:100px;border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-family:inherit;font-size:12px;text-align:right;"></td>
+      <td style="white-space:nowrap"><button class="btn btn-o btn-xs" onclick="viewDraft2Ro('${d.id}')">👁</button></td>
+    </tr>`;
+  }).join('');
+
+  if(sumEl) sumEl.innerHTML=`
+    <div class="stat-card" style="padding:9px 13px;"><div class="stat-label">Total Order</div><div class="stat-value" style="font-size:16px;">${list.length}</div></div>
+    <div class="stat-card" style="padding:9px 13px;"><div class="stat-label">Total Berat</div><div class="stat-value" style="font-size:16px;">${totalBerat.toFixed(2)} kg</div></div>
+    <div class="stat-card" style="padding:9px 13px;"><div class="stat-label">Total Mitra Bayar (Ongkir)</div><div class="stat-value" style="font-size:16px;color:var(--accent)">Rp${totalOngkir.toLocaleString('id')}</div></div>
+    <div class="stat-card" style="padding:9px 13px;"><div class="stat-label">Sudah Dicek</div><div class="stat-value" style="font-size:16px;color:var(--green)">${totalChecked}/${list.length}</div></div>`;
+}
+
+function ckoSetBerat(id,val){
+  const kg=parseFloat(val); if(isNaN(kg)) return;
+  ckoOverrides[id]={...ckoOverrides[id], berat:kg};
+  saveCkoOverrides(); renderCekOngkir();
+}
+function ckoSetOngkir(id,val){
+  const rp=parseInt(val); if(isNaN(rp)) return;
+  ckoOverrides[id]={...ckoOverrides[id], ongkir:rp};
+  saveCkoOverrides(); renderCekOngkir();
+}
+function ckoSetChecked(id,val){
+  ckoOverrides[id]={...ckoOverrides[id], checked:!!val};
+  saveCkoOverrides(); renderCekOngkir();
+}
+
+function viewDraft2Ro(id){
+  const d=ckoRows.find(x=>x.id===id); if(!d) return;
+  const items=(d.items||[]).filter(i=>!i.removed&&i.product);
+  const rincian=items.map(i=>`• ${i.product.name} ×${i.qty} = Rp${((i.product.harga||0)*i.qty).toLocaleString('id')}`).join('\n')||'(tidak ada rincian item tersimpan)';
+  alert(`${d.nama||'—'} · ${BRAND_LABEL[d.brand]||d.brand}\nAlamat: ${d.alamat||'—'}\nTelp: ${d.telp||'—'}\nEkspedisi: ${d.eksp||'—'}\n\n${rincian}\n\nOngkir tercatat CS RO: Rp${(d.ongkir||0).toLocaleString('id')}\nGrand total: Rp${(d.grand_total||0).toLocaleString('id')}`);
+}
+
+function copyCekOngkirSpreadsheet(){
+  // Ambil baris yang sedang tampil (mengikuti filter aktif), urutan kolom sama seperti contoh spreadsheet:
+  // Tanggal | Nama Mitra | Order | Ekspedisi | Berat di Marketing/Customer | Mitra Bayar
+  const q=(document.getElementById('cko_q')?.value||'').toLowerCase();
+  const brand=document.getElementById('cko_brand')?.value||'';
+  const statusF=document.getElementById('cko_status')?.value||'';
+  const from=document.getElementById('cko_from')?.value||'';
+  const to=document.getElementById('cko_to')?.value||'';
+  let list=[...ckoRows];
+  if(q) list=list.filter(d=>(d.nama||'').toLowerCase().includes(q));
+  if(brand) list=list.filter(d=>d.brand===brand);
+  if(from) list=list.filter(d=>d.saved_at && d.saved_at.slice(0,10)>=from);
+  if(to)   list=list.filter(d=>d.saved_at && d.saved_at.slice(0,10)<=to);
+  if(statusF) list=list.filter(d=>{ const c=!!ckoOverride(d.id).checked; return statusF==='sudah'?c:!c; });
+
+  if(!list.length){ toast('⚠️ Tidak ada baris untuk disalin'); return; }
+
+  const header=['Tanggal','Nama Mitra','Order','Ekspedisi','Berat di Marketing/Customer','Mitra Bayar'];
+  const rows=list.map(d=>{
+    const tgl=d.saved_at?new Date(d.saved_at).toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}):'';
+    return [tgl, d.nama||'', ckoOrderLabel(d), d.eksp||'', ckoBeratKg(d), 'Rp'+ckoOngkir(d).toLocaleString('id')];
+  });
+  const tsv=[header.join('\t'), ...rows.map(r=>r.join('\t'))].join('\n');
+  navigator.clipboard.writeText(tsv).then(()=>{
+    toast(`✅ ${rows.length} baris disalin — tinggal paste (Ctrl+V) ke Google Sheets / Excel`);
+  }).catch(()=>toast('⚠️ Gagal menyalin ke clipboard'));
+}
 
 // =========================================================
 // PAKET & BRAND MANAGEMENT

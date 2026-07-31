@@ -292,15 +292,20 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
       <div class="panel" id="panelLaporan">
         <div class="dash-wrap">
           <div class="page-header">
-            <div><div class="page-title">Laporan &amp; Rekap</div><div class="page-sub">Ringkasan data semua tools</div></div>
+            <div><div class="page-title">Laporan &amp; Rekap</div><div class="page-sub">Ringkasan data semua tools — CS FU, CS RO, Admin</div></div>
           </div>
           <div class="card">
-            <div class="ct">📊 Laporan Gabungan</div>
-            <div style="text-align:center;padding:30px 0;color:var(--text3);">
-              <div style="font-size:40px;margin-bottom:10px;">📈</div>
-              <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Laporan akan tersedia setelah semua tools menggunakan Supabase</div>
-              <div style="font-size:12px;">Data dari CS FU, CS RO, dan Admin akan direkap otomatis di sini</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+              <div class="fg" style="margin-bottom:0;"><label>Dari</label><input type="date" id="lapFrom" onchange="loadLaporan()"></div>
+              <div class="fg" style="margin-bottom:0;"><label>Sampai</label><input type="date" id="lapTo" onchange="loadLaporan()"></div>
+              <button class="btn btn-o btn-sm" onclick="setLapRange('today')">Hari ini</button>
+              <button class="btn btn-o btn-sm" onclick="setLapRange('week')">Minggu ini</button>
+              <button class="btn btn-o btn-sm" onclick="setLapRange('month')">Bulan ini</button>
+              <button class="btn btn-o btn-sm" onclick="loadLaporan()" style="margin-left:auto;">🔄 Refresh</button>
             </div>
+          </div>
+          <div id="laporanContainer">
+            <div class="card"><div style="text-align:center;padding:30px 0;color:var(--text3);">⏳ Memuat data laporan...</div></div>
           </div>
         </div>
       </div>
@@ -466,6 +471,7 @@ function loadApp(){
   document.getElementById('tbUser').textContent=currentUser.nama;
   buildSidebar();
   buildDashboard();
+  loadDashboardStats();
   navTo('dashboard');
   if(currentUser.role==='owner') loadUsers();
 }
@@ -500,6 +506,8 @@ function navTo(id){
   if(['csfu','csro','admin','mitraproduk'].includes(id) && !iframeLoaded_map[id]){
     loadToolIframe(id);
   }
+  if(id==='laporan') loadLaporan();
+  if(id==='dashboard') loadDashboardStats();
   // Access bars for tool panels (mitraproduk tidak ada access bar — semua role bisa edit)
   if(['csfu','csro','admin'].includes(id)){
     const edit=canEdit(id);
@@ -578,6 +586,136 @@ function buildDashboard(){
       <span class="tc-access ${edit?'tca-edit':'tca-view'}">${edit?'✏️ Akses edit':'👁 Lihat saja'}</span>
     </div>`;
   }).join('');
+}
+
+// ===== DASHBOARD STATS (data nyata dari Supabase) =====
+async function loadDashboardStats(){
+  const el=document.getElementById('dashStats');
+  if(!el) return;
+  try{
+    const [fuRows, roRows, adminRows] = await Promise.all([
+      sbGet('cs_fu_entries','select=tanggal,is_deal'),
+      sbGet('cs_ro_drafts','select=saved_at,grand_total'),
+      sbGet('admin_drafts','select=data,saved_at'),
+    ]);
+    const todayStr=new Date().toISOString().slice(0,10);
+    const ymNow=new Date().toISOString().slice(0,7);
+
+    const totalOrderHariIni = roRows.filter(d=>d.saved_at && d.saved_at.slice(0,10)===todayStr).length;
+    const leadAktifFU = fuRows.filter(e=>!e.is_deal).length;
+    const dealBulanIni = fuRows.filter(e=>e.is_deal && e.tanggal && e.tanggal.slice(0,7)===ymNow).length;
+    const pendingAdmin = adminRows.filter(r=>{
+      const d=r.data||{};
+      return !d.totalForm || d.totalForm<=0 || (d.selisih && d.selisih!==0);
+    }).length;
+
+    el.innerHTML=[
+      {label:'Total order hari ini',val:totalOrderHariIni,sub:'Dari CS RO',cls:'blue'},
+      {label:'Lead aktif FU',val:leadAktifFU,sub:'Belum deal — CS FU',cls:'green'},
+      {label:'Pending verifikasi',val:pendingAdmin,sub:'Belum sesuai / belum diverif — Admin',cls:'warn'},
+      {label:'Deal bulan ini',val:dealBulanIni,sub:'Dari semua CS FU',cls:'red'},
+    ].map(s=>`<div class="stat-card ${s.cls}"><div class="stat-label">${s.label}</div><div class="stat-val">${s.val}</div><div class="stat-sub">${s.sub}</div></div>`).join('');
+  }catch(e){
+    el.innerHTML=[
+      {label:'Total order hari ini',val:'—',sub:'Dari CS RO',cls:'blue'},
+      {label:'Lead aktif FU',val:'—',sub:'Dari CS FU',cls:'green'},
+      {label:'Pending verifikasi',val:'—',sub:'Dari Admin',cls:'warn'},
+      {label:'Deal bulan ini',val:'—',sub:'Dari semua CS FU',cls:'red'},
+    ].map(s=>`<div class="stat-card ${s.cls}"><div class="stat-label">${s.label}</div><div class="stat-val">${s.val}</div><div class="stat-sub">${s.sub}</div></div>`).join('');
+    console.warn('Gagal memuat statistik dashboard:', e.message);
+  }
+}
+
+// ===== LAPORAN GABUNGAN =====
+function setLapRange(mode){
+  const today=new Date();
+  const fmt=d=>d.toISOString().split('T')[0];
+  let from, to=fmt(today);
+  if(mode==='today') from=to;
+  else if(mode==='week'){ const d=new Date(today); d.setDate(d.getDate()-d.getDay()+1); from=fmt(d); }
+  else { from=fmt(new Date(today.getFullYear(),today.getMonth(),1)); }
+  document.getElementById('lapFrom').value=from;
+  document.getElementById('lapTo').value=to;
+  loadLaporan();
+}
+
+async function loadLaporan(){
+  const c=document.getElementById('laporanContainer');
+  if(!c) return;
+  if(!document.getElementById('lapFrom').value) setLapRange('month');
+  const from=document.getElementById('lapFrom').value;
+  const to=document.getElementById('lapTo').value;
+  c.innerHTML='<div class="card"><div style="text-align:center;padding:30px 0;color:var(--text3);">⏳ Memuat data laporan...</div></div>';
+  try{
+    const [fuRows, roRows, adminRows] = await Promise.all([
+      sbGet('cs_fu_entries','select=tanggal,brand,is_deal,cs'),
+      sbGet('cs_ro_drafts','select=saved_at,brand,grand_total,status,created_by'),
+      sbGet('admin_drafts','select=data,saved_at,created_by'),
+    ]);
+    const inRange=(dateStr)=>{
+      if(!dateStr) return false;
+      const d=dateStr.slice(0,10);
+      return (!from||d>=from)&&(!to||d<=to);
+    };
+    const fu=fuRows.filter(e=>inRange(e.tanggal));
+    const ro=roRows.filter(d=>inRange(d.saved_at));
+    const adm=adminRows.filter(r=>inRange(r.saved_at));
+
+    const fuTotal=fu.length, fuDeal=fu.filter(e=>e.is_deal).length;
+    const fuRate=fuTotal?Math.round(fuDeal/fuTotal*100):0;
+    const roTotal=ro.length, roValue=ro.reduce((s,d)=>s+(d.grand_total||0),0), roLunas=ro.filter(d=>d.status==='done').length;
+    const admTotal=adm.length;
+    const admSesuai=adm.filter(r=>{const d=r.data||{};return d.totalForm>0 && d.selisih===0;}).length;
+    const admSelisih=adm.filter(r=>{const d=r.data||{};return d.totalForm>0 && d.selisih!==0;}).length;
+
+    // Per brand breakdown
+    const brandLabels={ngemiloh:'Ngemiloh',melumer:'Melumer',gokuah:'Gokuah',yamie:'Yamie Curry',bacigor:'Bacigor Mamang'};
+    const brandKeys=[...new Set([...fu.map(e=>e.brand),...ro.map(d=>d.brand)])].filter(Boolean);
+    const brandRows=brandKeys.map(bk=>{
+      const bfu=fu.filter(e=>e.brand===bk), bfuDeal=bfu.filter(e=>e.is_deal).length;
+      const bro=ro.filter(d=>d.brand===bk), broVal=bro.reduce((s,d)=>s+(d.grand_total||0),0);
+      return {brand:brandLabels[bk]||bk, fu:bfu.length, deal:bfuDeal, orderCount:bro.length, orderVal:broVal};
+    }).sort((a,b)=>(b.orderVal+b.deal*1000)-(a.orderVal+a.deal*1000));
+
+    // Per CS performance (FU)
+    const byCs={};
+    fu.forEach(e=>{ if(!e.cs) return; if(!byCs[e.cs]) byCs[e.cs]={fu:0,deal:0}; byCs[e.cs].fu++; if(e.is_deal) byCs[e.cs].deal++; });
+
+    let html='';
+    html+=`<div class="stat-grid">
+      <div class="stat-card blue"><div class="stat-label">Total Order CS RO</div><div class="stat-val">${roTotal}</div><div class="stat-sub">Rp${roValue.toLocaleString('id')} · ${roLunas} lunas</div></div>
+      <div class="stat-card green"><div class="stat-label">Total FU &amp; Deal</div><div class="stat-val">${fuDeal}/${fuTotal}</div><div class="stat-sub">Closing rate ${fuRate}%</div></div>
+      <div class="stat-card warn"><div class="stat-label">Verifikasi Admin</div><div class="stat-val">${admTotal}</div><div class="stat-sub">${admSesuai} sesuai · ${admSelisih} selisih</div></div>
+      <div class="stat-card red"><div class="stat-label">Periode</div><div class="stat-val" style="font-size:14px;">${from||'—'}</div><div class="stat-sub">s/d ${to||'—'}</div></div>
+    </div>`;
+
+    if(brandRows.length){
+      html+=`<div class="card"><div class="ct">🏷️ Rekap per Brand</div><div style="overflow-x:auto;"><table class="user-table"><thead><tr>
+        <th>Brand</th><th>Total FU</th><th>Deal</th><th>Order CS RO</th><th>Nilai Order</th>
+      </tr></thead><tbody>${brandRows.map(r=>`<tr>
+        <td style="font-weight:600;">${r.brand}</td><td>${r.fu}</td><td>${r.deal}</td><td>${r.orderCount}</td><td>Rp${r.orderVal.toLocaleString('id')}</td>
+      </tr>`).join('')}</tbody></table></div></div>`;
+    }
+
+    if(Object.keys(byCs).length){
+      html+=`<div class="card"><div class="ct">👤 Performa CS FU</div><div style="overflow-x:auto;"><table class="user-table"><thead><tr>
+        <th>CS</th><th>Total FU</th><th>Deal</th><th>Closing Rate</th>
+      </tr></thead><tbody>${Object.entries(byCs).sort((a,b)=>b[1].deal-a[1].deal).map(([cs,v])=>`<tr>
+        <td style="font-weight:600;">${cs}</td><td>${v.fu}</td><td>${v.deal}</td><td>${v.fu?Math.round(v.deal/v.fu*100):0}%</td>
+      </tr>`).join('')}</tbody></table></div></div>`;
+    }
+
+    if(!roTotal && !fuTotal && !admTotal){
+      html+=`<div class="card"><div style="text-align:center;padding:30px 0;color:var(--text3);">
+        <div style="font-size:40px;margin-bottom:10px;">📭</div>
+        <div style="font-size:13px;font-weight:600;">Tidak ada data pada rentang tanggal ini</div>
+      </div></div>`;
+    }
+
+    c.innerHTML=html;
+  }catch(e){
+    c.innerHTML=`<div class="card"><div style="text-align:center;padding:30px 0;color:var(--red);">⚠️ Gagal memuat laporan: ${e.message}</div></div>`;
+  }
 }
 
 // ===== USER MANAGEMENT =====
