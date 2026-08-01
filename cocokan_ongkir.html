@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cocokan Ongkir — Double Check CS RO</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+:root{
+  --bg:#F2F1ED;--surface:#FFF;--s2:#F8F7F4;--border:#E4E2DA;
+  --text:#1A1916;--text2:#6B6860;--text3:#9E9C96;
+  --accent:#2B5CE6;--al:#EEF2FD;--alb:#C5D5F8;
+  --red:#D94040;--rl2:#FEE2E2;--rb:#FECACA;
+  --green:#1A8A4A;--gl:#EBF7F0;--gb:#B5E2C8;
+  --warn:#C97B10;--wl:#FEF5E7;--wb:#F3D58F;
+  --purple:#7B5EA7;--pl:#F3EEF9;--pb:#C4B0E0;
+  --r:10px;--rl:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;}
+
+.hdr{background:#111;color:#fff;padding:13px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;flex-wrap:wrap;gap:8px;}
+.hdr h1{font-size:14px;font-weight:800;letter-spacing:-.3px;}
+.hdr h1 span{color:#6ee7b7;}
+.hdr .idbar{font-size:11px;color:rgba(255,255,255,.6);}
+#syncStatus{font-size:12px;font-weight:600;}
+
+.wrap{max-width:1180px;margin:0 auto;padding:18px 14px;}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:16px;margin-bottom:12px;}
+.ct{font-size:13px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:7px;}
+.ct .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border-radius:var(--r);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;border:none;}
+.btn-p{background:var(--accent);color:#fff;}.btn-p:hover{background:#1e4ad4;}
+.btn-g{background:var(--green);color:#fff;}.btn-g:hover{background:#146638;}
+.btn-o{background:transparent;border:1px solid var(--border);color:var(--text2);}.btn-o:hover{background:var(--s2);}
+.btn-rd{background:transparent;border:1px solid var(--red);color:var(--red);}
+.btn-sm{padding:5px 11px;font-size:12px;}
+.btn-xs{padding:3px 8px;font-size:11px;}
+
+.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:10px;}
+.fg label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;}
+.fg input,.fg select,.fg textarea{border:1px solid var(--border);border-radius:var(--r);padding:8px 11px;font-family:inherit;font-size:13px;background:var(--surface);color:var(--text);width:100%;transition:border .15s;}
+.fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(43,92,230,.07);}
+
+.al{padding:9px 12px;border-radius:var(--r);font-size:12px;font-weight:500;margin-bottom:10px;display:flex;gap:7px;}
+.al-i{background:var(--al);color:var(--accent);border:1px solid #C5D5F8;}
+.al-w{background:var(--wl);color:var(--warn);border:1px solid #F3D58F;}
+.al-g{background:var(--gl);color:var(--green);border:1px solid #B5E2C8;}
+.al-r{background:var(--rl2);color:var(--red);border:1px solid var(--rb);}
+
+.mitra-search-wrap{position:relative;}
+.mitra-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:0 8px 24px rgba(0,0,0,.1);z-index:300;max-height:220px;overflow-y:auto;display:none;}
+.mitra-dropdown.show{display:block;}
+.mitra-opt{padding:10px 13px;cursor:pointer;border-bottom:1px solid var(--border);}
+.mitra-opt:last-child{border-bottom:none;}
+.mitra-opt:hover{background:var(--al);}
+.mitra-opt .on{font-weight:600;font-size:12px;}
+.mitra-opt .om{font-size:11px;color:var(--text3);margin-top:2px;}
+
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px;}
+.tbl th{background:var(--s2);padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border);white-space:nowrap;}
+.tbl td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tr:hover td{background:var(--s2);}
+.tbl .r{text-align:right;}
+
+.filter-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+.filter-row input,.filter-row select{border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-family:inherit;font-size:12px;background:var(--surface);}
+
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;}
+.badge-ok{background:var(--gl);color:var(--green);border:1px solid var(--gb);}
+.badge-err{background:var(--rl2);color:var(--red);border:1px solid var(--rb);}
+.badge-warn{background:var(--wl);color:var(--warn);border:1px solid var(--wb);}
+.badge-info{background:var(--al);color:var(--accent);border:1px solid var(--alb);}
+
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:12px 14px;}
+.stat-label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
+.stat-value{font-size:18px;font-weight:800;}
+
+.ob{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:11px;font-family:'Courier New',monospace;font-size:11.5px;line-height:1.75;white-space:pre-wrap;word-break:break-word;max-height:220px;overflow-y:auto;}
+
+.empty-state{text-align:center;padding:40px 20px;color:var(--text3);}
+.empty-state .ei{font-size:36px;margin-bottom:8px;}
+.hidden{display:none!important;}
+#toast{position:fixed;bottom:18px;right:18px;background:#111;color:#fff;padding:9px 16px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:opacity .2s;pointer-events:none;max-width:340px;}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+.ws-row{background:var(--al);border:2px solid var(--accent);}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:760px){.g2{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div id="toast"></div>
+
+<div class="hdr">
+  <h1>🚚⚖️ Cocokan <span>Ongkir</span> — Double Check CS RO</h1>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span class="idbar" id="idbar"></span>
+    <span id="syncStatus" style="font-size:12px;color:#aaa;">⚪ Memuat...</span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="al al-i">💡 Menampilkan order dari CS RO yang statusnya sudah <b>Lunas</b> saja. Cek ulang berat &amp; ongkir di sini sebelum kirim, lalu salin ke spreadsheet. Perubahan di sini tidak mengubah data asli di CS RO. Berat tagihan otomatis dibulatkan ke atas kalau ada koma dan minimal 11kg.</div>
+
+  <div id="cko_summary" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"></div>
+
+  <div class="card">
+    <div class="filter-row" style="margin-bottom:0;">
+      <input type="text" id="cko_q" placeholder="Cari nama mitra..." oninput="renderCekOngkir()" style="min-width:180px;">
+      <select id="cko_brand" onchange="renderCekOngkir()">
+        <option value="">Semua Brand</option>
+        <option value="ngemiloh">Ngemiloh</option>
+        <option value="melumer">Melumer</option>
+        <option value="gokuah">Gokuah</option>
+        <option value="yamie">Yamie Curry</option>
+        <option value="bacigor">Bacigor Mamang</option>
+      </select>
+      <select id="cko_eksp" onchange="renderCekOngkir()">
+        <option value="">Semua Ekspedisi</option>
+      </select>
+      <select id="cko_status" onchange="renderCekOngkir()">
+        <option value="">Semua Status</option>
+        <option value="belum">⏳ Belum dicek</option>
+        <option value="sudah">✅ Sudah dicek</option>
+      </select>
+      <input type="date" id="cko_from" onchange="renderCekOngkir()">
+      <input type="date" id="cko_to" onchange="renderCekOngkir()">
+      <button class="btn btn-o btn-sm" onclick="pullCekOngkirData()">🔄 Refresh</button>
+      <button class="btn btn-p btn-sm" onclick="copyCekOngkirSpreadsheet()" id="cko_copyBtn">📋 Copy untuk Spreadsheet</button>
+    </div>
+  </div>
+
+  <div class="card" style="padding:0;overflow:hidden;">
+    <div style="overflow-x:auto;">
+      <table class="tbl">
+        <thead><tr>
+          <th style="text-align:center"><input type="checkbox" id="cko_selectAll" onchange="toggleSelectAllCko(this)" style="width:15px;height:15px;cursor:pointer;"></th>
+          <th></th><th>Tanggal</th><th>Nama Mitra</th><th>Order</th><th>Ekspedisi</th>
+          <th class="r">Item</th><th class="r">Berat CS RO</th><th class="r">Ongkir CS RO</th>
+          <th class="r">Berat Final</th><th class="r">Ongkir Final</th><th></th>
+        </tr></thead>
+        <tbody id="cko_body"><tr><td colspan="12" style="text-align:center;padding:30px;color:var(--text3)">⏳ Memuat data dari CS RO...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- WORKSPACE PENCOCOKAN -->
+  <div class="card hidden" id="wsCard">
+    <div class="ct"><div class="dot" style="background:var(--accent)"></div>🔍 Workspace Pencocokan — <span id="wsNama" style="margin-left:4px;"></span>
+      <button class="btn btn-o btn-sm" style="margin-left:auto;" onclick="closeWorkspace()">✕ Tutup</button>
+    </div>
+
+    <div class="g2">
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">📦 Rincian Tersimpan dari CS RO</div>
+        <div style="overflow-x:auto;margin-bottom:10px;">
+          <table class="tbl"><thead><tr><th>Produk</th><th class="r">Qty</th><th class="r">Berat</th><th class="r">Subtotal</th></tr></thead>
+            <tbody id="wsStoredBody"></tbody>
+          </table>
+        </div>
+        <div style="font-size:12px;color:var(--text2);">
+          Total item: <b id="wsStoredCount">0</b> · Total berat: <b id="wsStoredBerat">0 kg</b> · Total harga: <b id="wsStoredHarga">Rp0</b>
+        </div>
+        <div style="margin-top:6px;font-size:12px;color:var(--text2);">
+          Ekspedisi: <b id="wsEksp">—</b> · Alamat: <span id="wsAlamat">—</span>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">🔍 Cek Ulang dari Teks Orderan (opsional)</div>
+        <div class="fg">
+          <textarea id="ws_text" rows="4" placeholder="Paste ulang teks orderan / nota di sini untuk verifikasi independen..."></textarea>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+          <button class="btn btn-p btn-sm" onclick="wsAutoDetect()">⚡ Deteksi Otomatis</button>
+          <button class="btn btn-o btn-sm" onclick="wsClearCekUlang()">🗑 Bersihkan</button>
+        </div>
+        <div class="mitra-search-wrap" style="margin-bottom:8px;">
+          <input type="text" id="ws_search" placeholder="Cari &amp; tambah produk manual..." oninput="wsSearchProduk(this.value)" onblur="setTimeout(()=>wsHideDD(),200)" autocomplete="off">
+          <div class="mitra-dropdown" id="ws_dd"></div>
+        </div>
+        <div id="ws_detectResult" style="font-size:11px;margin-bottom:8px;"></div>
+        <div style="overflow-x:auto;">
+          <table class="tbl"><thead><tr><th>Produk</th><th class="r">Qty</th><th class="r">Berat</th><th></th></tr></thead>
+            <tbody id="wsCekBody"><tr><td colspan="4" style="text-align:center;color:var(--text3);padding:10px;">Belum ada item dicek ulang</td></tr></tbody>
+          </table>
+        </div>
+        <div style="font-size:12px;color:var(--text2);margin-top:6px;">
+          Total hasil cek ulang: <b id="wsCekCount">0</b> item · <b id="wsCekBerat">0 kg</b>
+        </div>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:14px;">
+      <div class="g2">
+        <div>
+          <div class="fg"><label>Berat Menurut Admin (kg) — kosongkan jika sama dengan CS RO</label><input type="number" step="0.01" id="ws_beratAdmin" oninput="wsUpdateSelisih()" placeholder="cth: 43.5"></div>
+          <div style="font-size:10.5px;color:var(--text3);margin:-6px 0 6px;">⚖️ Berat tagihan otomatis dibulatkan ke atas kalau ada koma, dan minimal 11kg.</div>
+          <div id="ws_beratSelisih" style="font-size:12px;"></div>
+        </div>
+        <div>
+          <div class="fg"><label>Ongkir Menurut Admin (Rp) — kosongkan jika sama dengan CS RO</label><input type="number" step="1000" id="ws_ongkirAdmin" oninput="wsUpdateSelisih()" placeholder="cth: 150000"></div>
+          <div id="ws_ongkirSelisih" style="font-size:12px;"></div>
+        </div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;margin:10px 0;">
+        <input type="checkbox" id="ws_checked" style="width:16px;height:16px;cursor:pointer;"> ✅ Sudah dicek &amp; nilai di atas sudah benar
+      </label>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn btn-o" onclick="closeWorkspace()">Batal</button>
+        <button class="btn btn-g" onclick="wsSaveResult()">💾 Simpan Hasil Cocokkan</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// =========================================================
+// SUPABASE
+// =========================================================
+const SB_URL = 'https://vaezkvntylwouhqbxukp.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZhZXprdm50eWx3b3VocWJ4dWtwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDczMjQsImV4cCI6MjA5NzIyMzMyNH0.M7XXn7WIsTdUepfq3kNbEEZiCreNnvXIZJAD0Q7P2WU';
+const SB_HDR = { 'Content-Type':'application/json', 'apikey':SB_KEY, 'Authorization':'Bearer '+SB_KEY, 'Prefer':'return=representation' };
+async function sbGet(t,p=''){const r=await fetch(`${SB_URL}/rest/v1/${t}?${p}`,{headers:SB_HDR});if(!r.ok)throw new Error(await r.text());return r.json();}
+async function sbUpsert(t,b){const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:{...SB_HDR,'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(b)});if(!r.ok)throw new Error(await r.text());return r.json();}
+
+const BRAND_LABEL = {ngemiloh:'Ngemiloh',melumer:'Melumer',gokuah:'Gokuah',yamie:'Yamie Curry',bacigor:'Bacigor Mamang'};
+const BRAND_COLOR = {ngemiloh:'#F0A253',melumer:'#2B5CE6',gokuah:'#D94040',yamie:'#1A8A4A',bacigor:'#7B5EA7'};
+
+function setSyncStatus(icon,text,color){
+  const el=document.getElementById('syncStatus');
+  if(el) el.innerHTML=`<span style="color:${color||'#aaa'}">${icon} ${text}</span>`;
+}
+
+// =========================================================
+// IDENTITAS — diterima dari parent (sistem OpsTools)
+// =========================================================
+let CURRENT_CS = { nama:null, role:null };
+function applyCsIdentity(info){
+  CURRENT_CS.nama = info?.nama || null;
+  CURRENT_CS.role = info?.role || null;
+  const el=document.getElementById('idbar');
+  if (CURRENT_CS.nama && el) el.textContent = '👤 '+CURRENT_CS.nama;
+}
+window.addEventListener('message', (ev)=>{ if (ev.data && ev.data.type==='OPSTOOLS_IDENTITY') applyCsIdentity(ev.data.payload); });
+if (window.parent !== window) window.parent.postMessage({ type:'OPSTOOLS_REQUEST_IDENTITY' }, '*');
+
+// =========================================================
+// UTIL
+// =========================================================
+function normalizeUnit(raw){
+  if(!raw) return '';
+  let u = String(raw).trim().toLowerCase();
+  u = u.replace(/^1\s+/, '');
+  u = u.replace(/\s*gram$/, 'gr').replace(/\s*gr$/, 'gr');
+  u = u.replace(/^(\d+)\s*gr$/, '$1gr');
+  u = u.replace(/\s+/g,'');
+  if(u==='kilogram') return 'kg';
+  if(u==='pack'||u==='pak') return 'pack';
+  return u;
+}
+function inferKategori(p){
+  const n=(p.name||'').toLowerCase();
+  if(n.includes('bumbu')) return 'bumbu';
+  if(n.includes('saus')||n.includes('saos')||n.includes('chili oil')||n.includes('cili oil')) return 'saus';
+  if(n.includes('paperbowl')||n.includes('paper bowl')||n.includes('bowl')||n.includes('tutup')||n.includes('foodpail')||n.includes('food pail')||n.includes('cup')||n.includes('kemasan')||n.includes('plastik')||n.includes('mika')||n.includes('sealer')||n.includes('label')||n.includes('hako')) return 'kemasan';
+  if(n.includes('sendok')||n.includes('sumpit')||n.includes('garpu')||n.includes('tissue')||n.includes('tisu')||n.includes('celemek')||n.includes('banner')||n.includes('tenda')||n.includes('payung')) return 'perlengkapan';
+  return 'bahan baku';
+}
+function norm(s){ return (s||'').toLowerCase().replace(/[^a-z0-9\s]/g,'').replace(/\s+/g,' ').trim(); }
+function sim(a,b){
+  a=norm(a); b=norm(b);
+  if(!a||!b) return 0;
+  if(a===b) return 1;
+  if(b.includes(a)||a.includes(b)) return 0.9;
+  const ta=a.split(' '), tb=b.split(' ');
+  let m=0; ta.forEach(t=>{ if(tb.some(x=>x.startsWith(t)||t.startsWith(x))) m++; });
+  const baseScore=m/Math.max(ta.length,tb.length);
+  if(ta.every(t=>tb.some(x=>x.includes(t)||t.includes(x)))) return Math.max(baseScore,0.8);
+  return baseScore;
+}
+function parseQtyFromLine(line){
+  let m = line.match(/[×x]\s*(\d+(?:[.,]\d+)?)\s*(?:kg|gr|gram|pcs|pack)?\s*$/i);
+  if(m) return parseFloat(m[1].replace(',','.'))||1;
+  m = line.match(/qty\s*[:=]\s*(\d+(?:[.,]\d+)?)/i);
+  if(m) return parseFloat(m[1].replace(',','.'))||1;
+  m = line.match(/(\d+(?:[.,]\d+)?)\s*(?:kg|gr|gram|pcs|pack)\s*$/i);
+  if(m) return parseFloat(m[1].replace(',','.'))||1;
+  m = line.match(/(\d+(?:[.,]\d+)?)\s*$/);
+  if(m) return parseFloat(m[1].replace(',','.'))||1;
+  return 1;
+}
+function fmtRp(v){ return 'Rp'+Math.round(v||0).toLocaleString('id'); }
+
+// =========================================================
+// PRODUK — sumber tunggal dari "Mitra & Produk" (shared_config: cs_ro_brands)
+// =========================================================
+let ALL_PRODUK = []; // flat: {brand,code,name,unit,harga,berat,kategori,alias}
+async function loadProdukData(){
+  try{
+    const rows = await sbGet('shared_config', 'key=eq.cs_ro_brands');
+    const val = (rows[0] && rows[0].value) || {};
+    const out = [];
+    Object.keys(val).forEach(bk=>{
+      (val[bk].products||[]).forEach(p=>{
+        out.push({ brand:bk, code:p.code, name:p.name, unit:p.unit, harga:p.harga||0, berat:p.berat||0, kategori:p.kategori||inferKategori(p), alias:p.alias||[] });
+      });
+    });
+    ALL_PRODUK = out;
+  }catch(e){ console.warn('Gagal memuat produk:', e.message); }
+}
+
+// =========================================================
+// DATA ORDER CS RO (status Lunas saja) + OVERRIDE HASIL COCOKKAN
+// =========================================================
+let ckoRows = [];
+let ckoOverrides = {};
+let ckoSelected = new Set(); // id draft yang dicentang untuk disalin ke spreadsheet
+const CKO_OVERRIDE_KEY = 'admin_cek_ongkir_overrides';
+
+async function loadCkoOverrides(){
+  try{
+    const rows = await sbGet('shared_config', 'key=eq.'+CKO_OVERRIDE_KEY);
+    ckoOverrides = (rows[0] && rows[0].value) || {};
+  }catch(e){ ckoOverrides = ckoOverrides || {}; }
+}
+async function saveCkoOverrides(){
+  try{ await sbUpsert('shared_config', { key:CKO_OVERRIDE_KEY, value:ckoOverrides, updated_at:new Date().toISOString() }); }
+  catch(e){ toast('⚠️ Gagal menyimpan ke server: '+e.message); }
+}
+
+function populateEkspFilter(){
+  const sel=document.getElementById('cko_eksp');
+  if(!sel) return;
+  const cur=sel.value;
+  const list=[...new Set(ckoRows.map(d=>d.eksp).filter(Boolean))].sort();
+  sel.innerHTML='<option value="">Semua Ekspedisi</option>'+list.map(e=>`<option value="${e}">${e}</option>`).join('');
+  if(list.includes(cur)) sel.value=cur;
+}
+
+async function pullCekOngkirData(){
+  const body=document.getElementById('cko_body');
+  if(body) body.innerHTML='<tr><td colspan="12" style="text-align:center;padding:30px;color:var(--text3)">⏳ Memuat data dari CS RO...</td></tr>';
+  setSyncStatus('⏳','Memuat...','var(--warn)');
+  try{
+    await Promise.all([loadProdukData(), loadCkoOverrides()]);
+    const roDrafts = await sbGet('cs_ro_drafts','select=*&status=eq.done&order=saved_at.desc');
+    ckoRows = roDrafts;
+    ckoSelected = new Set([...ckoSelected].filter(id=>ckoRows.some(d=>d.id===id)));
+    populateEkspFilter();
+    renderCekOngkir();
+    setSyncStatus('🟢','Tersinkron ('+roDrafts.length+' order lunas)','var(--green)');
+  }catch(e){
+    setSyncStatus('🔴','Gagal memuat','var(--red)');
+    if(body) body.innerHTML=`<tr><td colspan="12" style="text-align:center;padding:30px;color:var(--red)">⚠️ Gagal memuat data: ${e.message}</td></tr>`;
+  }
+}
+
+function ckoOverride(id){ return ckoOverrides[id] || {}; }
+function ckoBeratKgStored(d){ return d.berat ? +(d.berat/1000).toFixed(2) : 0; }
+// Aturan pembulatan berat tagihan ekspedisi: ada koma → dibulatkan ke atas, dan minimal 11kg
+// (di bawah 11kg tetap dihitung 11kg). Contoh: 5.2 → 11, 19.5 → 20, 20.00 → 20.
+function applyBeratRule(kgRaw){
+  if(kgRaw==null || kgRaw==='' || isNaN(kgRaw)) return kgRaw;
+  const kg = Math.round(parseFloat(kgRaw)*100)/100; // buang noise floating point
+  const ceiled = Number.isInteger(kg) ? kg : Math.ceil(kg);
+  return Math.max(11, ceiled);
+}
+function ckoBeratFinal(d){ const ov=ckoOverride(d.id); const raw=(ov.berat!=null && ov.berat!=='') ? +ov.berat : ckoBeratKgStored(d); return applyBeratRule(raw); }
+function ckoOngkirFinal(d){ const ov=ckoOverride(d.id); return (ov.ongkir!=null && ov.ongkir!=='') ? +ov.ongkir : (d.ongkir||0); }
+function ckoOrderLabel(d){
+  const items=(d.items||[]).filter(i=>!i.removed);
+  return items.length>0 ? 'REPEAT ORDER' : (BRAND_LABEL[d.brand]||d.brand||'—').toUpperCase();
+}
+function ckoItemCount(d){ return (d.items||[]).filter(i=>!i.removed).length; }
+
+function filteredCkoList(){
+  const q=(document.getElementById('cko_q')?.value||'').toLowerCase();
+  const brand=document.getElementById('cko_brand')?.value||'';
+  const eksp=document.getElementById('cko_eksp')?.value||'';
+  const statusF=document.getElementById('cko_status')?.value||'';
+  const from=document.getElementById('cko_from')?.value||'';
+  const to=document.getElementById('cko_to')?.value||'';
+  let list=[...ckoRows];
+  if(q) list=list.filter(d=>(d.nama||'').toLowerCase().includes(q));
+  if(brand) list=list.filter(d=>d.brand===brand);
+  if(eksp) list=list.filter(d=>d.eksp===eksp);
+  if(from) list=list.filter(d=>d.saved_at && d.saved_at.slice(0,10)>=from);
+  if(to)   list=list.filter(d=>d.saved_at && d.saved_at.slice(0,10)<=to);
+  if(statusF) list=list.filter(d=>{ const c=!!ckoOverride(d.id).checked; return statusF==='sudah'?c:!c; });
+  return list;
+}
+
+function renderCekOngkir(){
+  const list=filteredCkoList();
+  const body=document.getElementById('cko_body');
+  const sumEl=document.getElementById('cko_summary');
+  if(!list.length){
+    body.innerHTML='<tr><td colspan="12" style="text-align:center;padding:30px;color:var(--text3)">Tidak ada order lunas ditemukan pada filter ini.</td></tr>';
+    if(sumEl) sumEl.innerHTML='';
+    updateCkoCopyBtn();
+    return;
+  }
+  let totalBerat=0, totalOngkirCsro=0, totalOngkirFinal=0, totalChecked=0;
+  body.innerHTML=list.map(d=>{
+    const bc=BRAND_COLOR[d.brand]||'#888';
+    const checked=!!ckoOverride(d.id).checked;
+    const beratStored=ckoBeratKgStored(d), beratFinal=ckoBeratFinal(d);
+    const ongkirStored=d.ongkir||0, ongkirFinal=ckoOngkirFinal(d);
+    totalBerat+=beratFinal; totalOngkirCsro+=ongkirStored; totalOngkirFinal+=ongkirFinal; if(checked) totalChecked++;
+    const tgl=d.saved_at?new Date(d.saved_at).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'}):'—';
+    const ongkirDiff = ongkirFinal - ongkirStored;
+    const beratDiff = beratFinal - beratStored;
+    const sel=ckoSelected.has(d.id);
+    return `<tr style="${checked?'background:var(--gl)':''}${sel?';outline:2px solid var(--accent);outline-offset:-2px':''}">
+      <td style="text-align:center"><input type="checkbox" data-id="${d.id}" ${sel?'checked':''} onchange="toggleCkoSelect('${d.id}',this.checked)" style="width:15px;height:15px;cursor:pointer;"></td>
+      <td style="text-align:center">${checked?'✅':'⏳'}</td>
+      <td style="white-space:nowrap;font-size:12px">${tgl}</td>
+      <td style="font-weight:700">${d.nama||'—'}<div style="font-size:10px;color:var(--text3);font-weight:400">${d.kode||''}</div></td>
+      <td><span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:${bc}18;color:${bc}">${ckoOrderLabel(d)}</span><div style="font-size:10px;color:var(--text3);margin-top:2px">${BRAND_LABEL[d.brand]||d.brand||''}</div></td>
+      <td style="font-size:12px">${d.eksp||'—'}</td>
+      <td class="r">${ckoItemCount(d)}</td>
+      <td class="r" style="font-size:12px;color:var(--text3)">${beratStored.toFixed(2)} kg</td>
+      <td class="r" style="font-size:12px;color:var(--text3)">${fmtRp(ongkirStored)}</td>
+      <td class="r" style="font-weight:700;${beratDiff!==0?'color:var(--warn)':''}">${beratFinal} kg</td>
+      <td class="r" style="font-weight:700;${ongkirDiff!==0?'color:var(--warn)':''}">${fmtRp(ongkirFinal)}</td>
+      <td><button class="btn btn-p btn-xs" onclick="openWorkspace('${d.id}')">🔍 Cocokkan</button></td>
+    </tr>`;
+  }).join('');
+
+  if(sumEl) sumEl.innerHTML=`
+    <div class="stat-card"><div class="stat-label">Order Lunas Ditampilkan</div><div class="stat-value">${list.length}</div></div>
+    <div class="stat-card"><div class="stat-label">Total Berat Final</div><div class="stat-value">${totalBerat} kg</div></div>
+    <div class="stat-card"><div class="stat-label">Ongkir CS RO vs Final</div><div class="stat-value" style="font-size:14px;">${fmtRp(totalOngkirCsro)} → ${fmtRp(totalOngkirFinal)}</div></div>
+    <div class="stat-card"><div class="stat-label">Sudah Dicek</div><div class="stat-value" style="color:var(--green)">${totalChecked}/${list.length}</div></div>`;
+
+  const selAll=document.getElementById('cko_selectAll');
+  if(selAll) selAll.checked = list.length>0 && list.every(d=>ckoSelected.has(d.id));
+  updateCkoCopyBtn();
+}
+
+function toggleCkoSelect(id, checked){
+  if(checked) ckoSelected.add(id); else ckoSelected.delete(id);
+  const selAll=document.getElementById('cko_selectAll');
+  const list=filteredCkoList();
+  if(selAll) selAll.checked = list.length>0 && list.every(d=>ckoSelected.has(d.id));
+  updateCkoCopyBtn();
+}
+
+function toggleSelectAllCko(checkboxEl){
+  const list=filteredCkoList();
+  if(checkboxEl.checked) list.forEach(d=>ckoSelected.add(d.id));
+  else list.forEach(d=>ckoSelected.delete(d.id));
+  renderCekOngkir();
+}
+
+function updateCkoCopyBtn(){
+  const btn=document.getElementById('cko_copyBtn');
+  if(!btn) return;
+  btn.textContent = ckoSelected.size ? `📋 Copy ${ckoSelected.size} Baris Terpilih` : '📋 Copy Semua ke Spreadsheet';
+}
+
+// =========================================================
+// WORKSPACE PENCOCOKAN — per order
+// =========================================================
+let wsDraft = null;
+let wsCekItems = []; // hasil cek ulang manual/auto-detect: {produk,qty}
+
+function openWorkspace(id){
+  const d=ckoRows.find(x=>x.id===id); if(!d) return;
+  wsDraft = d;
+  wsCekItems = [];
+  document.getElementById('ws_text').value='';
+  document.getElementById('ws_detectResult').innerHTML='';
+  document.getElementById('ws_search').value='';
+
+  document.getElementById('wsNama').textContent = `${d.nama||'—'} · ${BRAND_LABEL[d.brand]||d.brand}`;
+  document.getElementById('wsEksp').textContent = d.eksp||'—';
+  document.getElementById('wsAlamat').textContent = d.alamat||'—';
+
+  const items=(d.items||[]).filter(i=>!i.removed&&i.product);
+  let totalHarga=0, totalBerat=0;
+  document.getElementById('wsStoredBody').innerHTML = items.length ? items.map(i=>{
+    const sub=(i.product.harga||0)*i.qty, b=(i.product.berat||0)*i.qty;
+    totalHarga+=sub; totalBerat+=b;
+    return `<tr><td style="font-size:12px">${i.product.name}</td><td class="r">${i.qty}</td><td class="r" style="font-size:11px">${b>=1000?(b/1000).toFixed(2)+'kg':b+'gr'}</td><td class="r">${fmtRp(sub)}</td></tr>`;
+  }).join('') : '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:10px;">Tidak ada rincian item tersimpan</td></tr>';
+  document.getElementById('wsStoredCount').textContent = items.length;
+  document.getElementById('wsStoredBerat').textContent = (totalBerat/1000).toFixed(2)+' kg';
+  document.getElementById('wsStoredHarga').textContent = fmtRp(totalHarga);
+
+  const ov=ckoOverride(d.id);
+  document.getElementById('ws_beratAdmin').value = ov.berat!=null ? ov.berat : '';
+  document.getElementById('ws_ongkirAdmin').value = ov.ongkir!=null ? ov.ongkir : '';
+  document.getElementById('ws_checked').checked = !!ov.checked;
+
+  renderWsCekTable();
+  wsUpdateSelisih();
+
+  document.getElementById('wsCard').classList.remove('hidden');
+  document.getElementById('wsCard').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function closeWorkspace(){
+  document.getElementById('wsCard').classList.add('hidden');
+  wsDraft = null;
+}
+
+function wsSearchProduk(q){
+  const dd=document.getElementById('ws_dd');
+  if(!q.trim() || !wsDraft){ dd.classList.remove('show'); return; }
+  const ql=q.toLowerCase();
+  const res=ALL_PRODUK.filter(p=>p.brand===wsDraft.brand && (p.name.toLowerCase().includes(ql)||p.code.toLowerCase().includes(ql))).slice(0,10);
+  if(!res.length){ dd.classList.remove('show'); return; }
+  dd.innerHTML=res.map(p=>`<div class="mitra-opt" onmousedown="wsAddItem('${p.code}')"><div class="on">${p.name}</div><div class="om">${p.code} · ${p.unit} · ${fmtRp(p.harga)}</div></div>`).join('');
+  dd.classList.add('show');
+}
+function wsHideDD(){ document.getElementById('ws_dd').classList.remove('show'); }
+function wsAddItem(code){
+  const p=ALL_PRODUK.find(x=>x.code===code && x.brand===(wsDraft&&wsDraft.brand)); if(!p) return;
+  const ex=wsCekItems.find(i=>i.produk.code===code);
+  if(ex) ex.qty++; else wsCekItems.push({produk:p, qty:1});
+  document.getElementById('ws_search').value=''; wsHideDD();
+  renderWsCekTable();
+}
+function wsUpdateQty(code,val){
+  const i=wsCekItems.find(x=>x.produk.code===code);
+  if(i) i.qty=Math.max(0.1,parseFloat(val)||1);
+  renderWsCekTable();
+}
+function wsRemoveItem(code){ wsCekItems=wsCekItems.filter(i=>i.produk.code!==code); renderWsCekTable(); }
+function wsClearCekUlang(){ wsCekItems=[]; document.getElementById('ws_text').value=''; document.getElementById('ws_detectResult').innerHTML=''; renderWsCekTable(); }
+
+function renderWsCekTable(){
+  const body=document.getElementById('wsCekBody');
+  if(!wsCekItems.length){
+    body.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:10px;">Belum ada item dicek ulang</td></tr>';
+    document.getElementById('wsCekCount').textContent='0';
+    document.getElementById('wsCekBerat').textContent='0 kg';
+    return;
+  }
+  let totalBerat=0;
+  body.innerHTML=wsCekItems.map(i=>{
+    const b=(i.produk.berat||0)*i.qty; totalBerat+=b;
+    return `<tr><td style="font-size:12px">${i.produk.name}</td>
+      <td class="r"><input type="number" value="${i.qty}" min="0.1" step="0.1" onchange="wsUpdateQty('${i.produk.code}',this.value)" style="width:55px;border:1px solid var(--border);border-radius:6px;padding:3px 5px;font-family:inherit;font-size:12px;text-align:center;"></td>
+      <td class="r" style="font-size:11px">${b>=1000?(b/1000).toFixed(2)+'kg':b+'gr'}</td>
+      <td><button class="btn btn-rd btn-xs" onclick="wsRemoveItem('${i.produk.code}')">✕</button></td></tr>`;
+  }).join('');
+  document.getElementById('wsCekCount').textContent = wsCekItems.length;
+  document.getElementById('wsCekBerat').textContent = (totalBerat/1000).toFixed(2)+' kg';
+  // Auto-isi field "Berat Menurut Admin" dari hasil cek ulang supaya tidak perlu isi manual dua kali
+  const beratAdminInput=document.getElementById('ws_beratAdmin');
+  if(beratAdminInput && !beratAdminInput.dataset.manual){
+    beratAdminInput.value = (totalBerat/1000).toFixed(2);
+    wsUpdateSelisih();
+  }
+}
+document.addEventListener('DOMContentLoaded', ()=>{
+  const el=document.getElementById('ws_beratAdmin');
+  if(el) el.addEventListener('input', ()=>{ el.dataset.manual='1'; });
+});
+
+function wsAutoDetect(){
+  if(!wsDraft){ toast('⚠️ Pilih order dulu'); return; }
+  const text=document.getElementById('ws_text').value;
+  if(!text.trim()){ toast('⚠️ Paste teks orderan dulu!'); return; }
+  const filtered=ALL_PRODUK.filter(p=>p.brand===wsDraft.brand);
+  const lines=text.split('\n').map(l=>l.trim()).filter(Boolean);
+  let detected=[], notFound=[];
+  lines.forEach(line=>{
+    const notaMatch=line.match(/^\[([^\]]+)\]\s*[-–]\s*(.+?)\s*[-–]\s*(\d+)\s*[-–]/);
+    let codeHint=null, qtyHint=null, nameHint=null;
+    if(notaMatch){ codeHint=notaMatch[1].trim(); nameHint=notaMatch[2].trim(); qtyHint=parseInt(notaMatch[3])||1; }
+    const lineLow=line.toLowerCase();
+    let qty=qtyHint||parseQtyFromLine(line);
+    let found=null;
+    if(codeHint) found=filtered.find(p=>p.code.toLowerCase()===codeHint.toLowerCase());
+    if(!found) found=filtered.find(p=>lineLow.includes('['+p.code.toLowerCase()+']')||lineLow.includes(p.code.toLowerCase()));
+    if(!found&&nameHint) found=filtered.find(p=>p.name.length>=4&&nameHint.toLowerCase().includes(p.name.toLowerCase().substring(0,Math.min(p.name.length,10))));
+    if(!found){
+      let best=null,bs=0;
+      filtered.forEach(p=>{
+        let s=sim(line,p.name); if(s>bs){bs=s;best=p;}
+        (p.alias||[]).forEach(a=>{ const s2=sim(line,a); if(s2>bs){bs=s2;best=p;} });
+      });
+      if(bs>=0.55) found=best;
+    }
+    if(found){
+      const ex=wsCekItems.find(i=>i.produk.code===found.code);
+      if(ex) ex.qty+=qty; else wsCekItems.push({produk:found,qty});
+      detected.push(`✅ <b>${found.name}</b> ×${qty}`);
+    } else {
+      notFound.push(`❓ "${line.substring(0,50)}${line.length>50?'…':''}" — tidak ditemukan`);
+    }
+  });
+  renderWsCekTable();
+  document.getElementById('ws_detectResult').innerHTML=[...detected,...notFound].map(l=>`<div style="padding:2px 0;color:${l.startsWith('✅')?'var(--green)':'var(--text3)'}">${l}</div>`).join('');
+  toast(`✅ ${detected.length} produk terdeteksi, ${notFound.length} tidak ditemukan`);
+}
+
+function wsUpdateSelisih(){
+  if(!wsDraft) return;
+  const beratStored=ckoBeratKgStored(wsDraft), ongkirStored=wsDraft.ongkir||0;
+  const beratAdminVal=document.getElementById('ws_beratAdmin').value;
+  const ongkirAdminVal=document.getElementById('ws_ongkirAdmin').value;
+  const beratRaw = beratAdminVal!=='' ? parseFloat(beratAdminVal)||0 : beratStored;
+  const beratFinal = applyBeratRule(beratRaw);
+  const ongkirFinal = ongkirAdminVal!=='' ? parseFloat(ongkirAdminVal)||0 : ongkirStored;
+  const bDiff=+(beratFinal-beratStored).toFixed(2);
+  const oDiff=ongkirFinal-ongkirStored;
+
+  const roundNote = beratFinal!==beratRaw ? ` <span style="color:var(--text3);font-weight:500;">→ berat tagihan ${beratFinal} kg (dibulatkan, min. 11kg)</span>` : '';
+  const bEl=document.getElementById('ws_beratSelisih');
+  bEl.innerHTML = (bDiff===0
+    ? `<span class="badge badge-ok">✅ Sesuai dengan CS RO (${beratStored.toFixed(2)} kg)</span>`
+    : `<span class="badge ${bDiff>0?'badge-warn':'badge-err'}">${bDiff>0?'⬆️ Lebih':'⬇️ Kurang'} ${Math.abs(bDiff).toFixed(2)} kg dari CS RO (${beratStored.toFixed(2)} kg)</span>`) + roundNote;
+
+  const oEl=document.getElementById('ws_ongkirSelisih');
+  oEl.innerHTML = oDiff===0
+    ? `<span class="badge badge-ok">✅ Sesuai dengan CS RO (${fmtRp(ongkirStored)})</span>`
+    : `<span class="badge ${oDiff>0?'badge-warn':'badge-err'}">${oDiff>0?'⬆️ CS RO kurang tagih':'⬇️ CS RO lebih tagih'} ${fmtRp(Math.abs(oDiff))} (CS RO: ${fmtRp(ongkirStored)})</span>`;
+}
+
+async function wsSaveResult(){
+  if(!wsDraft) return;
+  const beratVal=document.getElementById('ws_beratAdmin').value;
+  const ongkirVal=document.getElementById('ws_ongkirAdmin').value;
+  const checked=document.getElementById('ws_checked').checked;
+  ckoOverrides[wsDraft.id] = {
+    berat: beratVal!=='' ? parseFloat(beratVal) : null,
+    ongkir: ongkirVal!=='' ? parseInt(ongkirVal) : null,
+    checked: !!checked,
+    checkedBy: CURRENT_CS.nama || null,
+    checkedAt: new Date().toISOString(),
+  };
+  toast('⏳ Menyimpan hasil cocokkan...');
+  await saveCkoOverrides();
+  toast('✅ Hasil cocokkan tersimpan!');
+  renderCekOngkir();
+  closeWorkspace();
+}
+
+// =========================================================
+// COPY UNTUK SPREADSHEET
+// =========================================================
+function copyCekOngkirSpreadsheet(){
+  const filtered=filteredCkoList();
+  const list = ckoSelected.size ? filtered.filter(d=>ckoSelected.has(d.id)) : filtered;
+  if(!list.length){ toast('⚠️ Tidak ada baris untuk disalin'); return; }
+  const header=['Tanggal','Nama Mitra','Order','Ekspedisi','Berat di Marketing/Customer','Mitra Bayar'];
+  const rows=list.map(d=>{
+    const tgl=d.saved_at?new Date(d.saved_at).toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}):'';
+    return [tgl, d.nama||'', ckoOrderLabel(d), d.eksp||'', ckoBeratFinal(d), fmtRp(ckoOngkirFinal(d))];
+  });
+  const tsv=[header.join('\t'), ...rows.map(r=>r.join('\t'))].join('\n');
+  navigator.clipboard.writeText(tsv).then(()=>{
+    toast(`✅ ${rows.length} baris ${ckoSelected.size?'terpilih ':''}disalin — tinggal paste (Ctrl+V) ke Google Sheets / Excel`);
+  }).catch(()=>toast('⚠️ Gagal menyalin ke clipboard'));
+}
+
+// =========================================================
+// TOAST & INIT
+// =========================================================
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.style.opacity='1'; clearTimeout(t._t); t._t=setTimeout(()=>t.style.opacity='0',2800); }
+
+pullCekOngkirData();
+// Polling ringan tiap 30 detik supaya order lunas terbaru dari CS RO ikut muncul
+setInterval(()=>{ if(document.getElementById('wsCard').classList.contains('hidden')) pullCekOngkirData(); }, 30000);
+</script>
+</body>
+</html>

@@ -273,6 +273,21 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
         </div>
       </div>
 
+      <!-- COCOKAN ONGKIR -->
+      <div class="panel" id="panelCocokanongkir">
+        <div class="iframe-toolbar">
+          <span style="font-size:18px;">🚚</span>
+          <div><div class="title">Cocokan Ongkir</div><div class="sub">Double check berat &amp; ongkir order lunas dari CS RO</div></div>
+        </div>
+        <div class="iframe-wrap">
+          <div class="iframe-loading" id="cocokanongkirLoading">
+            <div class="spinner"></div>
+            <span style="font-size:12px;color:var(--text2);">Memuat Cocokan Ongkir...</span>
+          </div>
+          <iframe id="iframeCocokanongkir" class="tools-iframe" src=""></iframe>
+        </div>
+      </div>
+
       <!-- MITRA & PRODUK -->
       <div class="panel" id="panelMitraproduk">
         <div class="iframe-toolbar">
@@ -392,7 +407,7 @@ let currentUser = null;
 let selectedRole = 'csfu';
 let editingUserId = null;
 // Track which iframes are loaded
-const iframeLoaded_map = { csfu:false, csro:false, admin:false, mitraproduk:false };
+const iframeLoaded_map = { csfu:false, csro:false, admin:false, mitraproduk:false, cocokanongkir:false };
 
 const RC = {
   owner:   { label:'Owner',   chip:'chip-owner',   icon:'👑', desc:'Akses penuh ke semua fitur' },
@@ -408,6 +423,7 @@ const TOOL_URLS = {
   csro:  'cs_ro_index.html',
   admin: 'admin_tools.html',
   mitraproduk: 'mitra_produk.html',
+  cocokanongkir: 'cocokan_ongkir.html',
 };
 
 // ===== LOGIN =====
@@ -447,7 +463,7 @@ async function doLogin() {
 function doLogout(){
   currentUser=null;
   // Clear iframes
-  ['csfu','csro','admin'].forEach(k=>{
+  ['csfu','csro','admin','cocokanongkir'].forEach(k=>{
     document.getElementById('iframe'+k.charAt(0).toUpperCase()+k.slice(1)).src='';
     iframeLoaded_map[k]=false;
   });
@@ -478,6 +494,7 @@ function loadApp(){
 
 function buildSidebar(){
   const isOwner=currentUser.role==='owner';
+  const canDoubleCheck = isOwner || ['admin','manager'].includes(currentUser.role);
   let h='';
   h+=`<div class="sb-section">Menu</div>`;
   h+=`<div class="sb-item" onclick="navTo('dashboard')">🏠 <span>Dashboard</span></div>`;
@@ -485,6 +502,7 @@ function buildSidebar(){
   h+=`<div class="sb-item" onclick="navTo('csfu')">🎯 <span>CS FU</span>${!canEdit('csfu')?'<span class="sb-lock">👁</span>':''}</div>`;
   h+=`<div class="sb-item" onclick="navTo('csro')">📦 <span>CS RO</span>${!canEdit('csro')?'<span class="sb-lock">👁</span>':''}</div>`;
   h+=`<div class="sb-item" onclick="navTo('admin')">🗂️ <span>Admin Input</span>${!canEdit('admin')?'<span class="sb-lock">👁</span>':''}</div>`;
+  if(canDoubleCheck) h+=`<div class="sb-item" onclick="navTo('cocokanongkir')">🚚 <span>Cocokan Ongkir</span></div>`;
   h+=`<div class="sb-item" onclick="navTo('mitraproduk')">👥 <span>Mitra &amp; Produk</span></div>`;
   h+=`<div class="sb-section">Lainnya</div>`;
   h+=`<div class="sb-item" onclick="navTo('laporan')">📊 <span>Laporan</span></div>`;
@@ -499,11 +517,11 @@ function navTo(id){
   });
   // Panel switch
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
-  const map={dashboard:'panelDashboard',csfu:'panelCsfu',csro:'panelCsro',admin:'panelAdmin',mitraproduk:'panelMitraproduk',laporan:'panelLaporan',users:'panelUsers'};
+  const map={dashboard:'panelDashboard',csfu:'panelCsfu',csro:'panelCsro',admin:'panelAdmin',mitraproduk:'panelMitraproduk',cocokanongkir:'panelCocokanongkir',laporan:'panelLaporan',users:'panelUsers'};
   const target=document.getElementById(map[id]);
   if(target) target.classList.add('active');
   // Load iframe on first visit
-  if(['csfu','csro','admin','mitraproduk'].includes(id) && !iframeLoaded_map[id]){
+  if(['csfu','csro','admin','mitraproduk','cocokanongkir'].includes(id) && !iframeLoaded_map[id]){
     loadToolIframe(id);
   }
   if(id==='laporan') loadLaporan();
@@ -523,7 +541,7 @@ function navTo(id){
 }
 
 function loadToolIframe(toolKey){
-  const idMap={csfu:'iframeCsfu', csro:'iframeCsro', admin:'iframeAdmin', mitraproduk:'iframeMitraproduk'};
+  const idMap={csfu:'iframeCsfu', csro:'iframeCsro', admin:'iframeAdmin', mitraproduk:'iframeMitraproduk', cocokanongkir:'iframeCocokanongkir'};
   const iframe=document.getElementById(idMap[toolKey]);
   if(!iframe) return;
   document.getElementById(toolKey+'Loading').style.display='flex';
@@ -533,7 +551,7 @@ function loadToolIframe(toolKey){
 }
 
 function sendIdentityToIframe(toolKey){
-  const idMap={csfu:'iframeCsfu', csro:'iframeCsro', admin:'iframeAdmin', mitraproduk:'iframeMitraproduk'};
+  const idMap={csfu:'iframeCsfu', csro:'iframeCsro', admin:'iframeAdmin', mitraproduk:'iframeMitraproduk', cocokanongkir:'iframeCocokanongkir'};
   const iframe=document.getElementById(idMap[toolKey]);
   if(!iframe || !iframe.contentWindow) return;
   iframe.contentWindow.postMessage({

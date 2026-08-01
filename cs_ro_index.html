@@ -2284,11 +2284,30 @@ function delDraft(id){
   deleteDraftFromCloud(id);
   renderDrafts();updCount();fillRekapSel();
 }
-function markDone(id){
+async function toggleDraftStatus(id){
   const d=drafts.find(x=>x.id===id);
-  if(d && !canEditDraft(d)){ toast('🔒 Tidak bisa mengubah status draft milik '+(d.createdBy||'CS lain')); return; }
-  if(d){d.status='done';saveLS(id);renderDrafts();toast('✅ Ditandai lunas!');}
+  if(!d) return;
+  if(!canEditDraft(d)){ toast('🔒 Tidak bisa mengubah status draft milik '+(d.createdBy||'CS lain')); return; }
+  const goingDone = d.status!=='done';
+  if(goingDone){ if(!confirm('Tandai order "'+(d.nama||'—')+'" sebagai LUNAS?')) return; }
+  else { if(!confirm('Batalkan status Lunas dan kembalikan order "'+(d.nama||'—')+'" ke Menunggu?')) return; }
+  const prevStatus = d.status;
+  d.status = goingDone ? 'done' : 'draft';
+  localStorage.setItem('orderDrafts', JSON.stringify(drafts));
+  renderDrafts();
+  toast(goingDone ? '⏳ Menyimpan status Lunas...' : '⏳ Membatalkan status Lunas...');
+  try{
+    await sbUpsert('cs_ro_drafts', draftToRow(d));
+    sbSyncStatus='online'; updateSyncBadge();
+    toast(goingDone ? '✅ Ditandai Lunas & tersimpan online!' : '↩️ Dibatalkan, kembali ke Menunggu & tersimpan online!');
+  }catch(e){
+    sbSyncStatus='offline'; updateSyncBadge();
+    toast('⚠️ Gagal menyimpan ke server (status tersimpan lokal saja) — coba klik lagi saat koneksi normal.');
+    console.warn('Gagal sync status draft:', e.message);
+  }
 }
+// Alias lama, biar pemanggilan yang mungkin masih dipakai di tempat lain tidak error
+function markDone(id){ const d=drafts.find(x=>x.id===id); if(d && d.status!=='done') toggleDraftStatus(id); }
 function updCount(){ document.getElementById('draftCount').textContent=drafts.length; }
 
 let activeDateRange = 'all';
@@ -2401,9 +2420,11 @@ function renderDrafts(){
       const b=BRANDS[d.brand]||{label:d.brand,color:'#888'};
       const init=(d.nama||'?').split(' ').slice(0,2).map(x=>x[0]).join('').toUpperCase();
       const dt=d.savedAt?new Date(d.savedAt).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}):'';
-      const sb=d.status==='done'?'<span class="dst s-ok">✅ Lunas</span>':'<span class="dst s-d">⏳ Menunggu</span>';
-      const draftPorsi=(d.items||[]).filter(i=>!i.removed&&isPorsiItem(i.product)).reduce((s,i)=>s+(parseFloat(i.qty)||0),0);
       const mine = canEditDraft(d);
+      const sb=mine
+        ? `<button class="dst ${d.status==='done'?'s-ok':'s-d'}" style="border:none;cursor:pointer;font-family:inherit;" onclick="toggleDraftStatus('${d.id}')" title="Klik untuk ubah status Lunas / Menunggu">${d.status==='done'?'✅ Lunas':'⏳ Menunggu'}</button>`
+        : `<span class="dst ${d.status==='done'?'s-ok':'s-d'}">${d.status==='done'?'✅ Lunas':'⏳ Menunggu'}</span>`;
+      const draftPorsi=(d.items||[]).filter(i=>!i.removed&&isPorsiItem(i.product)).reduce((s,i)=>s+(parseFloat(i.qty)||0),0);
       const csBadge = d.createdBy ? `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:${mine?'#EBF7F0':'#F7F6F2'};color:${mine?'#1A8A4A':'#6B6860'};white-space:nowrap;">👤 ${d.createdBy}</span>` : '';
       const hasDiskon = d.diskonType && d.diskonType!=='none' && (parseFloat(d.diskonVal)||0)>0;
       const diskonBadge = hasDiskon ? `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:#FEF2F2;color:var(--red);white-space:nowrap;">🏷️ Diskon</span>` : '';
@@ -2420,7 +2441,6 @@ function renderDrafts(){
           <button class="btn btn-o btn-sm" onclick="loadDraft('${d.id}')">${mine?'✏️ Edit':'👁 Lihat'}</button>
           <button class="btn btn-o btn-sm" onclick="showRekap('${d.id}')">📊 Rekap</button>
           <button class="btn btn-o btn-sm" onclick="openCetakModal('${d.id}','label')">🖨</button>
-          ${d.status!=='done'&&mine?`<button class="btn btn-o btn-sm" style="color:var(--green);border-color:var(--green)" onclick="markDone('${d.id}')">✅</button>`:''}
           ${mine?`<button class="btn btn-rd btn-sm" onclick="delDraft('${d.id}')">🗑</button>`:''}
         </div>
       </div>`;
