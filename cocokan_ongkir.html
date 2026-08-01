@@ -672,7 +672,7 @@ function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg
 
 pullCekOngkirData();
 // Polling ringan tiap 30 detik supaya order lunas terbaru dari CS RO ikut muncul
-setInterval(()=>{ if(document.getElementById('wsCard').classList.contains('hidden')) pullCekOngkirData(); }, 30000);
+setInterval(()=>{ if(document.getElementById('wsCard').classList.contains('hidden')) pullCekOngkirData(); }, 90000);
 </script>
 </body>
 </html>

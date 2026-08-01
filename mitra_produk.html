@@ -1540,7 +1540,7 @@ async function init(){
 
   setSyncStatus('ok', 'Semua data tersinkron');
 
-  // Polling ringan setiap 25 detik — skip kalau sedang ada modal terbuka / user mengetik,
+  // Polling ringan setiap 90 detik — skip kalau sedang ada modal terbuka / user mengetik,
   // dan hanya re-render jika data benar-benar berubah (hindari kerja render sia-sia).
   setInterval(async ()=>{
     if(_mpIsEditing) return;
@@ -1561,7 +1561,7 @@ async function init(){
       console.error('Polling sync error:', e);
       setSyncStatus('error','Gagal sinkron berkala: '+e.message);
     }
-  }, 25000);
+  }, 90000);
 }
 
 init();

@@ -1437,7 +1437,7 @@ async function deleteDraftFromCloud(id){
 }
 
 let _isFillingForm = false; // true saat user sedang isi form verifikasi
-let _pollTimerAdmin = setInterval(()=>{ if(!_isFillingForm) pullDraftsFromCloud(true); }, 20000);
+let _pollTimerAdmin = setInterval(()=>{ if(!_isFillingForm) pullDraftsFromCloud(true); }, 60000);
 document.addEventListener('focusin', (e) => { if (e.target.matches('input,textarea,select')) _isFillingForm = true; });
 document.addEventListener('focusout', () => { setTimeout(()=>{ _isFillingForm = false; }, 800); });
 
@@ -1499,7 +1499,7 @@ let _adminPollStarted = false;
 function startAdminPolling(){
   if(_adminPollStarted) return;
   _adminPollStarted = true;
-  setInterval(()=>{ if(!_isFillingForm) loadAllFromSheets(); }, 30000);
+  setInterval(()=>{ if(!_isFillingForm) loadAllFromSheets(); }, 90000);
 }
 
 // ── Helper simpan/hapus per kategori data (Supabase) ──────────────────────

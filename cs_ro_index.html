@@ -1192,6 +1192,16 @@ async function sbDelete(t,id){const r=await fetch(`${SB_URL}/rest/v1/${t}?id=eq.
 
 let BRANDS = loadBrands();
 
+// PENTING: supaya diskon & berat/koli manual ikut tersinkron permanen (tidak hilang lagi setelah
+// polling/refresh), jalankan SQL ini SEKALI di Supabase SQL Editor untuk tabel cs_ro_drafts:
+//   ALTER TABLE cs_ro_drafts
+//     ADD COLUMN IF NOT EXISTS diskon_type text,
+//     ADD COLUMN IF NOT EXISTS diskon_val numeric,
+//     ADD COLUMN IF NOT EXISTS diskon_target text,
+//     ADD COLUMN IF NOT EXISTS berat_manual numeric,
+//     ADD COLUMN IF NOT EXISTS koli_manual integer;
+// Sebelum migrasi ini dijalankan, kode di bawah otomatis fallback (lihat pushDraftToCloud) supaya
+// sinkronisasi draft yang lain tetap normal — hanya diskon & berat manual yang belum permanen.
 function draftToRow(d){
   return {
     id: d.id, brand: d.brand, status: d.status, kode: d.kode||'', nama: d.nama||'',
@@ -1200,6 +1210,8 @@ function draftToRow(d){
     total_beli: d.totalBeli||0, berat: d.berat||0, grand_total: d.grandTotal||0,
     created_by: d.createdBy||'Tidak diketahui', saved_at: d.savedAt||new Date().toISOString(),
     updated_at: new Date().toISOString(),
+    diskon_type: d.diskonType||null, diskon_val: d.diskonVal||null, diskon_target: d.diskonTarget||null,
+    berat_manual: (d.beratManual!=null?d.beratManual:null), koli_manual: (d.koliManual!=null?d.koliManual:null),
   };
 }
 function rowToDraft(r){
@@ -1209,6 +1221,8 @@ function rowToDraft(r){
     ongkir: r.ongkir, waText: r.wa_text, items: r.items||[],
     totalBeli: r.total_beli, berat: r.berat, grandTotal: r.grand_total,
     createdBy: r.created_by, savedAt: r.saved_at,
+    diskonType: r.diskon_type||'none', diskonVal: r.diskon_val||0, diskonTarget: r.diskon_target||'bb',
+    beratManual: r.berat_manual!=null?r.berat_manual:null, koliManual: r.koli_manual!=null?r.koli_manual:null,
   };
 }
 
@@ -1237,8 +1251,25 @@ async function pullDraftsFromCloud(silent){
 }
 
 async function pushDraftToCloud(d){
-  try{ await sbUpsert('cs_ro_drafts', draftToRow(d)); sbSyncStatus='online'; }
-  catch(e){ sbSyncStatus='offline'; console.warn('Gagal sync ke cloud, tersimpan lokal saja:', e.message); }
+  const fullRow = draftToRow(d);
+  try{
+    await sbUpsert('cs_ro_drafts', fullRow);
+    sbSyncStatus='online';
+  }catch(e){
+    // Kalau kolom diskon_type/diskon_val/diskon_target/berat_manual/koli_manual belum ada di tabel
+    // Supabase (migrasi SQL belum dijalankan), coba lagi tanpa kolom itu supaya draft tetap tersinkron.
+    const msg=(e.message||'');
+    if(/diskon_|berat_manual|koli_manual|column/i.test(msg)){
+      const { diskon_type, diskon_val, diskon_target, berat_manual, koli_manual, ...legacyRow } = fullRow;
+      try{
+        await sbUpsert('cs_ro_drafts', legacyRow);
+        sbSyncStatus='online';
+        console.warn('Kolom diskon/berat manual belum ada di tabel cs_ro_drafts — jalankan migrasi SQL supaya diskon & berat manual ikut tersinkron permanen (lihat catatan di kode).');
+      }catch(e2){ sbSyncStatus='offline'; console.warn('Gagal sync ke cloud, tersimpan lokal saja:', e2.message); }
+    } else {
+      sbSyncStatus='offline'; console.warn('Gagal sync ke cloud, tersimpan lokal saja:', msg);
+    }
+  }
   updateSyncBadge();
 }
 
@@ -1254,7 +1285,7 @@ function startPolling(){
   _pollTimer=setInterval(()=>{
     // Jangan ganggu kalau user sedang mengisi form order (curBrand aktif)
     if(!curBrand) pullDraftsFromCloud(true);
-  }, 20000);
+  }, 60000);
 }
 // =========================================================
 // STATE & STORAGE
@@ -2425,6 +2456,7 @@ function renderDrafts(){
         ? `<button class="dst ${d.status==='done'?'s-ok':'s-d'}" style="border:none;cursor:pointer;font-family:inherit;" onclick="toggleDraftStatus('${d.id}')" title="Klik untuk ubah status Lunas / Menunggu">${d.status==='done'?'✅ Lunas':'⏳ Menunggu'}</button>`
         : `<span class="dst ${d.status==='done'?'s-ok':'s-d'}">${d.status==='done'?'✅ Lunas':'⏳ Menunggu'}</span>`;
       const draftPorsi=(d.items||[]).filter(i=>!i.removed&&isPorsiItem(i.product)).reduce((s,i)=>s+(parseFloat(i.qty)||0),0);
+      const draftBeratKg=(d.berat||0)/1000;
       const csBadge = d.createdBy ? `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:${mine?'#EBF7F0':'#F7F6F2'};color:${mine?'#1A8A4A':'#6B6860'};white-space:nowrap;">👤 ${d.createdBy}</span>` : '';
       const hasDiskon = d.diskonType && d.diskonType!=='none' && (parseFloat(d.diskonVal)||0)>0;
       const diskonBadge = hasDiskon ? `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:#FEF2F2;color:var(--red);white-space:nowrap;">🏷️ Diskon</span>` : '';
@@ -2432,7 +2464,7 @@ function renderDrafts(){
         <div class="dav" style="background:${b.color}20;color:${b.color}">${init}</div>
         <div class="di">
           <div class="dn">${d.nama||'—'} <span style="font-size:11px;color:var(--text3);font-weight:400">${d.kode?'['+d.kode+']':''}</span></div>
-          <div class="dm">${b.label} · Rp${(d.grandTotal||0).toLocaleString('id')}${draftPorsi>0?' · '+draftPorsi+' porsi':''} · ${dt}</div>
+          <div class="dm">${b.label} · Rp${(d.grandTotal||0).toLocaleString('id')}${draftBeratKg>0?' · ⚖️ '+draftBeratKg.toFixed(2)+' kg':''}${draftPorsi>0?' · '+draftPorsi+' porsi':''} · ${dt}</div>
         </div>
         ${diskonBadge}
         ${csBadge}
@@ -3267,7 +3299,7 @@ async function init() {
   // Sinkronisasi daftar ekspedisi
   await loadEkspListRemote();
 
-  // Polling ringan tiap 30 detik — skip total saat user sedang mengisi form order (curBrand aktif)
+  // Polling ringan tiap 90 detik — skip total saat user sedang mengisi form order (curBrand aktif)
   // supaya tidak membanjiri koneksi & tidak mengganggu input yang sedang berjalan.
   setInterval(async ()=>{
     if(curBrand) return; // sedang mengisi order, jangan ganggu
@@ -3280,7 +3312,7 @@ async function init() {
         if(JSON.stringify(merged)!==prevBrandsJSON){ BRANDS = merged; applyBrandVisibility(); }
       }
     }catch(e){ /* loadMitraSync/loadBrandsSync sudah handle status sendiri */ }
-  }, 30000);
+  }, 90000);
 }
 init();
 </script>

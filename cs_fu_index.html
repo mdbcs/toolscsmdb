@@ -567,7 +567,7 @@ async function syncFromSupabase(silent) {
 
 // Polling tiap 20 detik biar entry dari CS lain ikut muncul, tanpa ganggu saat user lagi mengisi form
 let _isTyping = false;
-let _pollTimer = setInterval(() => { if (!_isTyping) syncFromSupabase(true); }, 20000);
+let _pollTimer = setInterval(() => { if (!_isTyping) syncFromSupabase(true); }, 60000);
 document.addEventListener('focusin', (e) => { if (e.target.matches('input,textarea,select')) _isTyping = true; });
 document.addEventListener('focusout', () => { setTimeout(()=>{ _isTyping = false; }, 500); });
 
