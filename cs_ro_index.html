@@ -328,6 +328,26 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   </div>
 </div>
 
+<!-- ===== MODAL: BERSIHKAN DRAFT LAMA ===== -->
+<div class="modal-bg" id="cleanupModal" style="display:none;" onclick="if(event.target===this)closeCleanupModal()">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-title"><span>🧹 Bersihkan Draft Lama</span><button onclick="closeCleanupModal()">✕</button></div>
+    <div class="al al-i">Hanya draft berstatus <b>✅ Lunas</b> yang akan dihapus — draft <b>⏳ Menunggu</b> tidak akan disentuh. Data akan otomatis diekspor ke Excel dulu sebelum dihapus, jadi tetap ada arsipnya.</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--text2);cursor:pointer;">
+        <input type="checkbox" id="cleanupSelectAll" onchange="toggleCleanupSelectAll(this)" style="width:15px;height:15px;cursor:pointer;"> Pilih semua tanggal
+      </label>
+      <span id="cleanupDayCount" style="font-size:11px;color:var(--text3);"></span>
+    </div>
+    <div id="cleanupDayList" style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r);"></div>
+    <div id="cleanupPreview" style="font-size:13px;color:var(--text2);margin:10px 0 4px;padding:10px 12px;background:var(--s2);border-radius:var(--r);">Pilih minimal 1 tanggal yang ada draft Lunas-nya.</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
+      <button class="btn btn-o" onclick="closeCleanupModal()">Batal</button>
+      <button class="btn btn-warn" id="cleanupBtn" onclick="runCleanup()" disabled>⬇️ Export &amp; Hapus</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== HEADER ===== -->
 <div class="hdr">
   <div class="hdr-title">
@@ -360,6 +380,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <span style="font-size:13px;color:var(--text2);font-weight:500;">Semua order tersimpan</span>
     <div style="display:flex;gap:6px;">
       <button class="btn btn-o btn-sm" onclick="pullDraftsFromCloud()">🔄 Refresh</button>
+      <button class="btn btn-o btn-sm" id="btnCleanupDrafts" style="display:none;color:var(--warn);border-color:var(--warn);" onclick="openCleanupModal()">🧹 Bersihkan Draft Lama</button>
       <button class="btn btn-p btn-sm" onclick="startNew()">+ Order Baru</button>
     </div>
   </div>
@@ -1274,8 +1295,8 @@ async function pushDraftToCloud(d){
 }
 
 async function deleteDraftFromCloud(id){
-  try{ await sbDelete('cs_ro_drafts', id); }
-  catch(e){ console.warn('Gagal hapus dari cloud:', e.message); }
+  try{ await sbDelete('cs_ro_drafts', id); return true; }
+  catch(e){ console.warn('Gagal hapus dari cloud:', e.message); return false; }
 }
 
 // Polling tiap 20 detik supaya draft dari laptop lain ikut muncul, tanpa membanjiri koneksi
@@ -1309,6 +1330,8 @@ function applyCsIdentity(info){
     bar.style.display = 'flex';
     nameEl.textContent = CURRENT_CS.nama;
   }
+  const cleanupBtn = document.getElementById('btnCleanupDrafts');
+  if (cleanupBtn) cleanupBtn.style.display = CURRENT_CS.isOwnerLike ? 'inline-flex' : 'none';
   populateCsFilterOptions();
   renderDrafts();
   const note = document.getElementById('orderCsNote');
@@ -1325,6 +1348,9 @@ window.addEventListener('message', (ev) => {
 // Minta identitas saat dimuat (kalau jalan di dalam iframe)
 if (window.parent !== window) {
   window.parent.postMessage({ type: 'OPSTOOLS_REQUEST_IDENTITY' }, '*');
+} else {
+  const cleanupBtnStandalone = document.getElementById('btnCleanupDrafts');
+  if (cleanupBtnStandalone) cleanupBtnStandalone.style.display = 'inline-flex';
 }
 
 function canEditDraft(d){
@@ -2315,6 +2341,136 @@ function delDraft(id){
   deleteDraftFromCloud(id);
   renderDrafts();updCount();fillRekapSel();
 }
+
+// =========================================================
+// BERSIHKAN DRAFT LAMA — export ke Excel dulu, baru hapus draft Lunas
+// yang lebih tua dari tanggal yang dipilih admin/owner secara manual.
+// =========================================================
+function exportDraftsToExcel(list, filenamePrefix){
+  if(!list.length){ toast('⚠️ Tidak ada draft untuk diekspor'); return false; }
+  const rows=[['Tanggal','Kode Mitra','Nama','Brand','Alamat','No Telp','Ekspedisi','Status','Total Beli','Berat (kg)','Ongkir','Grand Total','Dibuat Oleh','Rincian Item']];
+  list.forEach(d=>{
+    const itemsTxt=(d.items||[]).filter(i=>!i.removed&&i.product).map(i=>`${i.product.name} x${i.qty}`).join('; ');
+    rows.push([
+      d.savedAt?new Date(d.savedAt).toLocaleString('id-ID'):'',
+      d.kode||'', d.nama||'', BRANDS[d.brand]?.label||d.brand||'',
+      d.alamat||'', d.telp||'', d.eksp||'',
+      d.status==='done'?'Lunas':'Menunggu',
+      d.totalBeli||0, +(((d.berat||0)/1000).toFixed(2)), d.ongkir||0, d.grandTotal||0,
+      d.createdBy||'', itemsTxt
+    ]);
+  });
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:18},{wch:12},{wch:22},{wch:14},{wch:30},{wch:16},{wch:14},{wch:10},{wch:14},{wch:10},{wch:12},{wch:14},{wch:16},{wch:50}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Draft Order');
+  XLSX.writeFile(wb, filenamePrefix+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  return true;
+}
+
+let cleanupSelectedDays = new Set();
+
+function getLunasByDay(){
+  const map={};
+  drafts.forEach(d=>{
+    if(d.status!=='done' || !d.savedAt) return;
+    const key=d.savedAt.slice(0,10);
+    (map[key]=map[key]||[]).push(d);
+  });
+  return map;
+}
+
+function openCleanupModal(){
+  cleanupSelectedDays = new Set();
+  renderCleanupDayList();
+  document.getElementById('cleanupPreview').textContent='Pilih minimal 1 tanggal yang ada draft Lunas-nya.';
+  document.getElementById('cleanupBtn').disabled=true;
+  const selAll=document.getElementById('cleanupSelectAll'); if(selAll) selAll.checked=false;
+  document.getElementById('cleanupModal').style.display='flex';
+}
+function closeCleanupModal(){ document.getElementById('cleanupModal').style.display='none'; }
+
+function renderCleanupDayList(){
+  const map=getLunasByDay();
+  const keys=Object.keys(map).sort((a,b)=>b.localeCompare(a)); // terbaru dulu
+  const el=document.getElementById('cleanupDayList');
+  const cnt=document.getElementById('cleanupDayCount');
+  if(!keys.length){
+    el.innerHTML='<div style="padding:16px;text-align:center;color:var(--text3);font-size:12px;">Belum ada draft Lunas.</div>';
+    if(cnt) cnt.textContent='';
+    return;
+  }
+  if(cnt) cnt.textContent=keys.length+' hari ada draft Lunas';
+  el.innerHTML=keys.map(k=>{
+    const list=map[k];
+    const total=list.reduce((s,d)=>s+(d.grandTotal||0),0);
+    const label=new Date(k+'T00:00:00').toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+    const checked=cleanupSelectedDays.has(k)?'checked':'';
+    return `<label style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border);cursor:pointer;font-size:12.5px;">
+      <input type="checkbox" data-day="${k}" ${checked} onchange="toggleCleanupDay('${k}',this.checked)" style="width:15px;height:15px;flex-shrink:0;cursor:pointer;">
+      <span style="flex:1;">${label}</span>
+      <span style="color:var(--text3);white-space:nowrap;">${list.length} draft · Rp${total.toLocaleString('id')}</span>
+    </label>`;
+  }).join('');
+}
+
+function toggleCleanupDay(day, checked){
+  if(checked) cleanupSelectedDays.add(day); else cleanupSelectedDays.delete(day);
+  const selAll=document.getElementById('cleanupSelectAll');
+  const keys=Object.keys(getLunasByDay());
+  if(selAll) selAll.checked = keys.length>0 && keys.every(k=>cleanupSelectedDays.has(k));
+  previewCleanup();
+}
+
+function toggleCleanupSelectAll(checkboxEl){
+  const keys=Object.keys(getLunasByDay());
+  if(checkboxEl.checked) keys.forEach(k=>cleanupSelectedDays.add(k));
+  else cleanupSelectedDays.clear();
+  renderCleanupDayList();
+  previewCleanup();
+}
+
+function getCleanupCandidates(){
+  if(!cleanupSelectedDays.size) return [];
+  return drafts.filter(d=>d.status==='done' && d.savedAt && cleanupSelectedDays.has(d.savedAt.slice(0,10)));
+}
+
+function previewCleanup(){
+  const list=getCleanupCandidates();
+  const btn=document.getElementById('cleanupBtn');
+  const prev=document.getElementById('cleanupPreview');
+  if(!list.length){ prev.textContent='Pilih minimal 1 tanggal yang ada draft Lunas-nya.'; btn.disabled=true; return; }
+  const totalVal=list.reduce((s,d)=>s+(d.grandTotal||0),0);
+  prev.innerHTML=`✅ <b>${list.length} draft Lunas</b> dari <b>${cleanupSelectedDays.size} hari</b> terpilih akan diekspor lalu dihapus (total nilai Rp${totalVal.toLocaleString('id')}).`;
+  btn.disabled=false;
+}
+
+async function runCleanup(){
+  const list=getCleanupCandidates();
+  if(!list.length){ toast('⚠️ Pilih minimal 1 tanggal dulu'); return; }
+  if(!confirm(`Export ${list.length} draft Lunas ini ke Excel dulu sebelum dihapus?`)) return;
+
+  const ok = exportDraftsToExcel(list, 'arsip-draft-lunas');
+  if(!ok) return;
+  if(!confirm(`File Excel sudah diunduh — cek dulu filenya kalau perlu.\n\nLanjutkan HAPUS ${list.length} draft ini dari sistem? Tindakan ini tidak bisa dibatalkan.`)) return;
+
+  const ids=list.map(d=>d.id);
+  drafts=drafts.filter(d=>!ids.includes(d.id));
+  localStorage.setItem('orderDrafts', JSON.stringify(drafts));
+  closeCleanupModal();
+  renderDrafts(); updCount(); fillRekapSel();
+  toast(`⏳ Menghapus ${ids.length} draft dari server...`);
+
+  let okCount=0, failCount=0;
+  for(const id of ids){
+    const success = await deleteDraftFromCloud(id);
+    if(success) okCount++; else failCount++;
+  }
+  toast(failCount
+    ? `⚠️ ${okCount} terhapus, ${failCount} gagal dari server (coba "🔄 Refresh" lalu ulangi kalau masih muncul)`
+    : `✅ ${okCount} draft lama berhasil dihapus & dibersihkan dari server!`);
+}
+
 async function toggleDraftStatus(id){
   const d=drafts.find(x=>x.id===id);
   if(!d) return;
