@@ -1206,10 +1206,32 @@ function loadBrands(){ return normalizeBrandProducts(loadBrandsLocal()); }
 const SB_URL = 'https://vaezkvntylwouhqbxukp.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZhZXprdm50eWx3b3VocWJ4dWtwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDczMjQsImV4cCI6MjA5NzIyMzMyNH0.M7XXn7WIsTdUepfq3kNbEEZiCreNnvXIZJAD0Q7P2WU';
 const SB_HDR = { 'Content-Type':'application/json', 'apikey':SB_KEY, 'Authorization':'Bearer '+SB_KEY, 'Prefer':'return=representation' };
-async function sbGet(t,p=''){const r=await fetch(`${SB_URL}/rest/v1/${t}?${p}`,{headers:SB_HDR});if(!r.ok)throw new Error(await r.text());return r.json();}
-async function sbPost(t,b){const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:SB_HDR,body:JSON.stringify(b)});if(!r.ok)throw new Error(await r.text());return r.json();}
-async function sbUpsert(t,b){const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:{...SB_HDR,'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(b)});if(!r.ok)throw new Error(await r.text());return r.json();}
-async function sbDelete(t,id){const r=await fetch(`${SB_URL}/rest/v1/${t}?id=eq.${id}`,{method:'DELETE',headers:SB_HDR});if(!r.ok)throw new Error(await r.text());}
+// Fetch dengan timeout — request yang menggantung tanpa batas (koneksi lambat/proxy nyangkut) akan
+// gagal cepat dalam 12 detik alih-alih diam tak terbatas, supaya user dapat feedback jelas & bisa retry.
+async function sbFetchTimeout(url, opts, timeoutMs=12000){
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(), timeoutMs);
+  try{
+    const r=await fetch(url, {...opts, signal:controller.signal});
+    clearTimeout(timer);
+    return r;
+  }catch(e){
+    clearTimeout(timer);
+    if(e.name==='AbortError') throw new Error('Koneksi timeout ('+(timeoutMs/1000)+'s) — server tidak merespons.');
+    throw e;
+  }
+}
+async function sbGet(t,p=''){const r=await sbFetchTimeout(`${SB_URL}/rest/v1/${t}?${p}`,{headers:SB_HDR});if(!r.ok)throw new Error(await r.text());return r.json();}
+async function sbPost(t,b){const r=await sbFetchTimeout(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:SB_HDR,body:JSON.stringify(b)});if(!r.ok)throw new Error(await r.text());return r.json();}
+async function sbUpsert(t,b){const r=await sbFetchTimeout(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:{...SB_HDR,'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(b)});if(!r.ok)throw new Error(await r.text());return r.json();}
+async function sbDelete(t,id){
+  const r=await sbFetchTimeout(`${SB_URL}/rest/v1/${t}?id=eq.${id}`,{method:'DELETE',headers:SB_HDR});
+  if(!r.ok) throw new Error(await r.text());
+  try{ return await r.json(); }catch(e){ return null; } // respons 204 kosong (tidak ada body) — dianggap aman
+}
+// PATCH ringan — hanya kirim field yang berubah (bukan seluruh baris termasuk rincian item),
+// jauh lebih cepat & jarang timeout dibanding upsert baris penuh. Dipakai untuk toggle status dll.
+async function sbPatch(t,id,b){const r=await sbFetchTimeout(`${SB_URL}/rest/v1/${t}?id=eq.${id}`,{method:'PATCH',headers:SB_HDR,body:JSON.stringify(b)});if(!r.ok)throw new Error(await r.text());return r.json();}
 
 let BRANDS = loadBrands();
 
@@ -1295,18 +1317,32 @@ async function pushDraftToCloud(d){
 }
 
 async function deleteDraftFromCloud(id){
-  try{ await sbDelete('cs_ro_drafts', id); return true; }
+  try{
+    const result = await sbDelete('cs_ro_drafts', id);
+    // Supabase (via 'Prefer: return=representation') bisa balas 200 OK dengan array KOSONG kalau
+    // baris sebenarnya tidak terhapus (misalnya diblokir RLS policy) — status HTTP tetap sukses jadi
+    // harus dicek isinya, bukan cuma r.ok, supaya tidak salah lapor "berhasil" padahal 0 baris terhapus.
+    if(Array.isArray(result) && result.length===0){
+      console.warn('Hapus draft', id, 'tidak berefek di server (0 baris terhapus) — cek RLS policy tabel cs_ro_drafts.');
+      return false;
+    }
+    return true;
+  }
   catch(e){ console.warn('Gagal hapus dari cloud:', e.message); return false; }
 }
 
-// Polling tiap 20 detik supaya draft dari laptop lain ikut muncul, tanpa membanjiri koneksi
+// Polling tiap 1 jam supaya draft dari laptop lain ikut muncul, tanpa membanjiri koneksi.
+// Berhenti total kalau tab sedang tidak dilihat (di-background) — hemat kuota Supabase.
 let _pollTimer=null;
+let _bulkDeleting=false; // true selama proses "Bersihkan Draft Lama" berjalan — polling ditahan dulu
 function startPolling(){
   if(_pollTimer) clearInterval(_pollTimer);
   _pollTimer=setInterval(()=>{
-    // Jangan ganggu kalau user sedang mengisi form order (curBrand aktif)
-    if(!curBrand) pullDraftsFromCloud(true);
-  }, 60000);
+    // Jangan ganggu kalau user sedang mengisi form order (curBrand aktif), tab tersembunyi,
+    // atau sedang ada proses hapus massal berjalan (supaya draft yang belum sempat terhapus
+    // di server tidak "ditarik balik" muncul lagi di tengah proses).
+    if(!curBrand && !document.hidden && !_bulkDeleting) pullDraftsFromCloud(true);
+  }, 3600000);
 }
 // =========================================================
 // STATE & STORAGE
@@ -2461,13 +2497,23 @@ async function runCleanup(){
   renderDrafts(); updCount(); fillRekapSel();
   toast(`⏳ Menghapus ${ids.length} draft dari server...`);
 
+  // Tahan polling background selama proses hapus berjalan — supaya draft yang belum sempat
+  // terhapus di server tidak "ditarik balik" muncul lagi oleh polling di tengah proses.
+  _bulkDeleting = true;
   let okCount=0, failCount=0;
   for(const id of ids){
     const success = await deleteDraftFromCloud(id);
     if(success) okCount++; else failCount++;
   }
+  _bulkDeleting = false;
+
+  // Setelah selesai, tarik ulang data asli dari server sebagai sumber kebenaran — kalau ada yang
+  // gagal terhapus (mis. diblokir RLS), draft itu akan otomatis muncul lagi di daftar sehingga
+  // kelihatan jelas mana yang benar-benar belum terhapus, bukan hilang diam-diam.
+  await pullDraftsFromCloud(true);
+
   toast(failCount
-    ? `⚠️ ${okCount} terhapus, ${failCount} gagal dari server (coba "🔄 Refresh" lalu ulangi kalau masih muncul)`
+    ? `⚠️ ${okCount} terhapus, ${failCount} gagal dari server (draft yang gagal akan muncul lagi di daftar — kemungkinan diblokir izin/RLS di Supabase)`
     : `✅ ${okCount} draft lama berhasil dihapus & dibersihkan dari server!`);
 }
 
@@ -2478,19 +2524,31 @@ async function toggleDraftStatus(id){
   const goingDone = d.status!=='done';
   if(goingDone){ if(!confirm('Tandai order "'+(d.nama||'—')+'" sebagai LUNAS?')) return; }
   else { if(!confirm('Batalkan status Lunas dan kembalikan order "'+(d.nama||'—')+'" ke Menunggu?')) return; }
-  const prevStatus = d.status;
-  d.status = goingDone ? 'done' : 'draft';
+  const newStatus = goingDone ? 'done' : 'draft';
+  d.status = newStatus;
   localStorage.setItem('orderDrafts', JSON.stringify(drafts));
   renderDrafts();
   toast(goingDone ? '⏳ Menyimpan status Lunas...' : '⏳ Membatalkan status Lunas...');
+
+  // Kirim HANYA field status (bukan seluruh draft termasuk rincian item) — jauh lebih kecil &
+  // jauh lebih jarang timeout dibanding upsert baris penuh. Kalau gagal, otomatis coba sekali lagi
+  // sebelum benar-benar dianggap gagal (menutupi blip koneksi sesaat).
+  const patchBody = { status:newStatus, updated_at:new Date().toISOString() };
   try{
-    await sbUpsert('cs_ro_drafts', draftToRow(d));
+    await sbPatch('cs_ro_drafts', id, patchBody);
     sbSyncStatus='online'; updateSyncBadge();
     toast(goingDone ? '✅ Ditandai Lunas & tersimpan online!' : '↩️ Dibatalkan, kembali ke Menunggu & tersimpan online!');
-  }catch(e){
-    sbSyncStatus='offline'; updateSyncBadge();
-    toast('⚠️ Gagal menyimpan ke server (status tersimpan lokal saja) — coba klik lagi saat koneksi normal.');
-    console.warn('Gagal sync status draft:', e.message);
+  }catch(e1){
+    console.warn('Gagal sync status draft (percobaan 1):', e1.message);
+    try{
+      await sbPatch('cs_ro_drafts', id, patchBody);
+      sbSyncStatus='online'; updateSyncBadge();
+      toast(goingDone ? '✅ Ditandai Lunas & tersimpan online!' : '↩️ Dibatalkan, kembali ke Menunggu & tersimpan online!');
+    }catch(e2){
+      sbSyncStatus='offline'; updateSyncBadge();
+      toast('⚠️ Gagal menyimpan ke server (status tersimpan lokal saja) — coba klik lagi saat koneksi normal.');
+      console.warn('Gagal sync status draft (percobaan 2):', e2.message);
+    }
   }
 }
 // Alias lama, biar pemanggilan yang mungkin masih dipakai di tempat lain tidak error
@@ -3455,10 +3513,10 @@ async function init() {
   // Sinkronisasi daftar ekspedisi
   await loadEkspListRemote();
 
-  // Polling ringan tiap 90 detik — skip total saat user sedang mengisi form order (curBrand aktif)
-  // supaya tidak membanjiri koneksi & tidak mengganggu input yang sedang berjalan.
+  // Polling ringan tiap 2 jam — skip total saat user sedang mengisi form order (curBrand aktif)
+  // atau saat tab tersembunyi, supaya tidak membanjiri koneksi & tidak mengganggu input yang berjalan.
   setInterval(async ()=>{
-    if(curBrand) return; // sedang mengisi order, jangan ganggu
+    if(curBrand || document.hidden) return; // sedang mengisi order / tab di-background, jangan ganggu
     try{
       const prevBrandsJSON = JSON.stringify(BRANDS);
       await loadMitraSync();
@@ -3468,7 +3526,7 @@ async function init() {
         if(JSON.stringify(merged)!==prevBrandsJSON){ BRANDS = merged; applyBrandVisibility(); }
       }
     }catch(e){ /* loadMitraSync/loadBrandsSync sudah handle status sendiri */ }
-  }, 90000);
+  }, 7200000);
 }
 init();
 </script>

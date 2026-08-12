@@ -245,6 +245,26 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 <!-- Print/Export area for Surat Jalan -->
 <div id="sjPrintArea"></div>
 
+<!-- Modal Bersihkan Draft Lama -->
+<div class="modal-bg hidden" id="cleanupModalAdmin" onclick="if(event.target===this)closeCleanupModalAdmin()">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-title"><span>🧹 Bersihkan Draft Lama</span><button onclick="closeCleanupModalAdmin()">✕</button></div>
+    <div class="al al-i">Data akan otomatis diekspor ke Excel dulu sebelum dihapus, jadi tetap ada arsipnya walau sudah hilang dari sistem.</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--text2);cursor:pointer;">
+        <input type="checkbox" id="cleanupSelectAllAdmin" onchange="toggleCleanupSelectAllAdmin(this)" style="width:15px;height:15px;cursor:pointer;"> Pilih semua tanggal
+      </label>
+      <span id="cleanupDayCountAdmin" style="font-size:11px;color:var(--text3);"></span>
+    </div>
+    <div id="cleanupDayListAdmin" style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;"></div>
+    <div id="cleanupPreviewAdmin" style="font-size:13px;color:var(--text2);margin:10px 0 4px;padding:10px 12px;background:var(--s2);border-radius:8px;">Pilih minimal 1 tanggal.</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
+      <button class="btn btn-o" onclick="closeCleanupModalAdmin()">Batal</button>
+      <button class="btn btn-w" id="cleanupBtnAdmin" onclick="runCleanupAdmin()" disabled>⬇️ Export &amp; Hapus</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal Tambah Marketing -->
 <div class="modal-bg hidden" id="mdMkt" onclick="if(event.target===this)closeModal('mdMkt')">
   <div class="modal">
@@ -712,6 +732,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
     <span style="font-size:13px;color:var(--text2);">Riwayat form yang sudah dihitung</span>
     <button class="btn btn-o btn-sm" onclick="pullDraftsFromCloud()">🔄 Refresh</button>
     <button class="btn btn-o btn-sm" onclick="exportDraftExcel()">⬆️ Export Excel</button>
+    <button class="btn btn-o btn-sm" id="btnCleanupDraftsAdmin" style="display:none;color:var(--warn);border-color:var(--warn);" onclick="openCleanupModalAdmin()">🧹 Bersihkan Draft Lama</button>
   </div>
   <div class="filter-row">
     <input type="date" id="draftFilterFrom" placeholder="Dari tanggal" onchange="renderDrafts()">
@@ -1227,6 +1248,8 @@ function applyCsIdentity(info) {
     bar.style.display = 'flex';
     nameEl.textContent = CURRENT_CS.nama;
   }
+  const cleanupBtnAdmin = document.getElementById('btnCleanupDraftsAdmin');
+  if (cleanupBtnAdmin) cleanupBtnAdmin.style.display = CURRENT_CS.isOwnerLike ? 'inline-flex' : 'none';
   populateAdminFilterOption();
   if (typeof renderDrafts === 'function') renderDrafts();
 }
@@ -1236,6 +1259,9 @@ window.addEventListener('message', (ev) => {
 });
 if (window.parent !== window) {
   window.parent.postMessage({ type: 'OPSTOOLS_REQUEST_IDENTITY' }, '*');
+} else {
+  const cleanupBtnAdminStandalone = document.getElementById('btnCleanupDraftsAdmin');
+  if (cleanupBtnAdminStandalone) cleanupBtnAdminStandalone.style.display = 'inline-flex';
 }
 
 function canEditDraft(d) {
@@ -1259,8 +1285,23 @@ function populateAdminFilterOption() {
 const SB_URL = 'https://vaezkvntylwouhqbxukp.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZhZXprdm50eWx3b3VocWJ4dWtwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDczMjQsImV4cCI6MjA5NzIyMzMyNH0.M7XXn7WIsTdUepfq3kNbEEZiCreNnvXIZJAD0Q7P2WU';
 const SB_HDR = { 'Content-Type':'application/json', 'apikey':SB_KEY, 'Authorization':'Bearer '+SB_KEY, 'Prefer':'return=representation' };
-async function sbGet(t,p=''){const r=await fetch(`${SB_URL}/rest/v1/${t}?${p}`,{headers:SB_HDR});if(!r.ok)throw new Error(await r.text());return r.json();}
-async function sbUpsert(t,b){const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:{...SB_HDR,'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(b)});if(!r.ok)throw new Error(await r.text());return r.json();}
+// Fetch dengan timeout — request yang menggantung tanpa batas akan gagal cepat dalam 12 detik
+// alih-alih diam tak terbatas, supaya user dapat feedback jelas & bisa retry.
+async function sbFetchTimeout(url, opts, timeoutMs=12000){
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(), timeoutMs);
+  try{
+    const r=await fetch(url, {...opts, signal:controller.signal});
+    clearTimeout(timer);
+    return r;
+  }catch(e){
+    clearTimeout(timer);
+    if(e.name==='AbortError') throw new Error('Koneksi timeout ('+(timeoutMs/1000)+'s) — server tidak merespons.');
+    throw e;
+  }
+}
+async function sbGet(t,p=''){const r=await sbFetchTimeout(`${SB_URL}/rest/v1/${t}?${p}`,{headers:SB_HDR});if(!r.ok)throw new Error(await r.text());return r.json();}
+async function sbUpsert(t,b){const r=await sbFetchTimeout(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:{...SB_HDR,'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(b)});if(!r.ok)throw new Error(await r.text());return r.json();}
 
 // Upsert banyak baris sekaligus dalam beberapa batch — jauh lebih cepat & ringan ke server
 // dibanding kirim satu-per-satu, penting untuk import massal ratusan baris.
@@ -1269,7 +1310,7 @@ async function sbUpsertBulk(t, rows, batchSize=200){
   for(let i=0;i<rows.length;i+=batchSize){
     const batch=rows.slice(i,i+batchSize);
     try{
-      const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:{...SB_HDR,'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(batch)});
+      const r=await sbFetchTimeout(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:{...SB_HDR,'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(batch)});
       if(!r.ok) throw new Error(await r.text());
       okCount+=batch.length;
     }catch(e){
@@ -1279,7 +1320,14 @@ async function sbUpsertBulk(t, rows, batchSize=200){
   }
   return {okCount, failCount};
 }
-async function sbDelete(t,id){const r=await fetch(`${SB_URL}/rest/v1/${t}?id=eq.${id}`,{method:'DELETE',headers:SB_HDR});if(!r.ok)throw new Error(await r.text());}
+// PATCH ringan — hanya kirim field yang berubah, dan sbDelete sekarang mengembalikan body respons
+// supaya bisa dideteksi kalau 0 baris benar-benar terhapus (mis. diblokir RLS) walau HTTP-nya 200 OK.
+async function sbPatch(t,id,b){const r=await sbFetchTimeout(`${SB_URL}/rest/v1/${t}?id=eq.${id}`,{method:'PATCH',headers:SB_HDR,body:JSON.stringify(b)});if(!r.ok)throw new Error(await r.text());return r.json();}
+async function sbDelete(t,id){
+  const r=await sbFetchTimeout(`${SB_URL}/rest/v1/${t}?id=eq.${id}`,{method:'DELETE',headers:SB_HDR});
+  if(!r.ok) throw new Error(await r.text());
+  try{ return await r.json(); }catch(e){ return null; }
+}
 
 function draftToRow(d){
   return { id: d.id, data: d, created_by: d.createdBy||'Tidak diketahui', saved_at: d.savedAt||new Date().toISOString(), updated_at: new Date().toISOString() };
@@ -1432,12 +1480,19 @@ async function pushDraftToCloud(d){
 }
 
 async function deleteDraftFromCloud(id){
-  try{ await sbDelete('admin_drafts', id); }
-  catch(e){ console.warn('Gagal hapus draft admin dari cloud:', e.message); }
+  try{
+    const result = await sbDelete('admin_drafts', id);
+    if(Array.isArray(result) && result.length===0){
+      console.warn('Hapus draft admin', id, 'tidak berefek di server (0 baris terhapus) — cek RLS policy tabel admin_drafts.');
+      return false;
+    }
+    return true;
+  }
+  catch(e){ console.warn('Gagal hapus draft admin dari cloud:', e.message); return false; }
 }
 
 let _isFillingForm = false; // true saat user sedang isi form verifikasi
-let _pollTimerAdmin = setInterval(()=>{ if(!_isFillingForm) pullDraftsFromCloud(true); }, 60000);
+let _pollTimerAdmin = setInterval(()=>{ if(!_isFillingForm && !document.hidden && !_bulkDeletingAdmin) pullDraftsFromCloud(true); }, 3600000);
 document.addEventListener('focusin', (e) => { if (e.target.matches('input,textarea,select')) _isFillingForm = true; });
 document.addEventListener('focusout', () => { setTimeout(()=>{ _isFillingForm = false; }, 800); });
 
@@ -1499,7 +1554,7 @@ let _adminPollStarted = false;
 function startAdminPolling(){
   if(_adminPollStarted) return;
   _adminPollStarted = true;
-  setInterval(()=>{ if(!_isFillingForm) loadAllFromSheets(); }, 90000);
+  setInterval(()=>{ if(!_isFillingForm && !document.hidden) loadAllFromSheets(); }, 7200000);
 }
 
 // ── Helper simpan/hapus per kategori data (Supabase) ──────────────────────
@@ -2537,6 +2592,142 @@ function delDraft(id){
   if(editingDraftId===id) editingDraftId=null;
   deleteDraftFromCloud(id);
   renderDrafts(); updBadges(); toast('🗑 Draft dihapus.');
+}
+
+// =========================================================
+// BERSIHKAN DRAFT LAMA — export ke Excel dulu, baru hapus draft verifikasi
+// dari tanggal-tanggal yang dipilih manual (checkbox per hari).
+// =========================================================
+let cleanupSelectedDaysAdmin = new Set();
+let _bulkDeletingAdmin = false; // true selama proses hapus massal berjalan — polling ditahan dulu
+
+function getDraftsByDayAdmin(){
+  const map={};
+  drafts.forEach(d=>{
+    if(!d.savedAt) return;
+    const key=d.savedAt.slice(0,10);
+    (map[key]=map[key]||[]).push(d);
+  });
+  return map;
+}
+
+function openCleanupModalAdmin(){
+  cleanupSelectedDaysAdmin = new Set();
+  renderCleanupDayListAdmin();
+  document.getElementById('cleanupPreviewAdmin').textContent='Pilih minimal 1 tanggal.';
+  document.getElementById('cleanupBtnAdmin').disabled=true;
+  const selAll=document.getElementById('cleanupSelectAllAdmin'); if(selAll) selAll.checked=false;
+  document.getElementById('cleanupModalAdmin').classList.remove('hidden');
+}
+function closeCleanupModalAdmin(){ document.getElementById('cleanupModalAdmin').classList.add('hidden'); }
+
+function renderCleanupDayListAdmin(){
+  const map=getDraftsByDayAdmin();
+  const keys=Object.keys(map).sort((a,b)=>b.localeCompare(a)); // terbaru dulu
+  const el=document.getElementById('cleanupDayListAdmin');
+  const cnt=document.getElementById('cleanupDayCountAdmin');
+  if(!keys.length){
+    el.innerHTML='<div style="padding:16px;text-align:center;color:var(--text3);font-size:12px;">Belum ada draft.</div>';
+    if(cnt) cnt.textContent='';
+    return;
+  }
+  if(cnt) cnt.textContent=keys.length+' hari ada draft';
+  el.innerHTML=keys.map(k=>{
+    const list=map[k];
+    const total=list.reduce((s,d)=>s+(d.totalSistem||0),0);
+    const label=new Date(k+'T00:00:00').toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+    const checked=cleanupSelectedDaysAdmin.has(k)?'checked':'';
+    return `<label style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border);cursor:pointer;font-size:12.5px;">
+      <input type="checkbox" data-day="${k}" ${checked} onchange="toggleCleanupDayAdmin('${k}',this.checked)" style="width:15px;height:15px;flex-shrink:0;cursor:pointer;">
+      <span style="flex:1;">${label}</span>
+      <span style="color:var(--text3);white-space:nowrap;">${list.length} draft · Rp${total.toLocaleString('id')}</span>
+    </label>`;
+  }).join('');
+}
+
+function toggleCleanupDayAdmin(day, checked){
+  if(checked) cleanupSelectedDaysAdmin.add(day); else cleanupSelectedDaysAdmin.delete(day);
+  const selAll=document.getElementById('cleanupSelectAllAdmin');
+  const keys=Object.keys(getDraftsByDayAdmin());
+  if(selAll) selAll.checked = keys.length>0 && keys.every(k=>cleanupSelectedDaysAdmin.has(k));
+  previewCleanupAdmin();
+}
+
+function toggleCleanupSelectAllAdmin(checkboxEl){
+  const keys=Object.keys(getDraftsByDayAdmin());
+  if(checkboxEl.checked) keys.forEach(k=>cleanupSelectedDaysAdmin.add(k));
+  else cleanupSelectedDaysAdmin.clear();
+  renderCleanupDayListAdmin();
+  previewCleanupAdmin();
+}
+
+function getCleanupCandidatesAdmin(){
+  if(!cleanupSelectedDaysAdmin.size) return [];
+  return drafts.filter(d=>d.savedAt && cleanupSelectedDaysAdmin.has(d.savedAt.slice(0,10)));
+}
+
+function previewCleanupAdmin(){
+  const list=getCleanupCandidatesAdmin();
+  const btn=document.getElementById('cleanupBtnAdmin');
+  const prev=document.getElementById('cleanupPreviewAdmin');
+  if(!list.length){ prev.textContent='Pilih minimal 1 tanggal.'; btn.disabled=true; return; }
+  const totalVal=list.reduce((s,d)=>s+(d.totalSistem||0),0);
+  prev.innerHTML=`✅ <b>${list.length} draft</b> dari <b>${cleanupSelectedDaysAdmin.size} hari</b> terpilih akan diekspor lalu dihapus (total nilai Rp${totalVal.toLocaleString('id')}).`;
+  btn.disabled=false;
+}
+
+function exportAdminDraftsToExcel(list, filenamePrefix){
+  if(!list.length){ toast('⚠️ Tidak ada draft untuk diekspor'); return false; }
+  const rows=[['Tanggal','Nama Mitra','Brand','Paket','Marketing','Total Sistem','Total Form','Selisih','Pay Type','No HP','Alamat','Dibuat Oleh','Catatan']];
+  list.forEach(d=>{
+    rows.push([
+      d.savedAt?new Date(d.savedAt).toLocaleString('id-ID'):'',
+      d.nama||'', BRAND_LABEL[d.brand]||d.brand||'', d.namaPaket||'', d.marketing||'',
+      d.totalSistem||0, d.totalForm||0, d.selisih||0, d.payType||'',
+      d.hp||'', d.alamat||'', d.createdBy||'', d.catatan||''
+    ]);
+  });
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:18},{wch:22},{wch:14},{wch:14},{wch:18},{wch:14},{wch:14},{wch:12},{wch:10},{wch:16},{wch:30},{wch:16},{wch:30}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Draft Verifikasi');
+  XLSX.writeFile(wb, filenamePrefix+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  return true;
+}
+
+async function runCleanupAdmin(){
+  const list=getCleanupCandidatesAdmin();
+  if(!list.length){ toast('⚠️ Pilih minimal 1 tanggal dulu'); return; }
+  if(!confirm(`Export ${list.length} draft ini ke Excel dulu sebelum dihapus?`)) return;
+
+  const ok = exportAdminDraftsToExcel(list, 'arsip-draft-admin');
+  if(!ok) return;
+  if(!confirm(`File Excel sudah diunduh — cek dulu filenya kalau perlu.\n\nLanjutkan HAPUS ${list.length} draft ini dari sistem? Tindakan ini tidak bisa dibatalkan.`)) return;
+
+  const ids=list.map(d=>d.id);
+  drafts=drafts.filter(d=>!ids.includes(d.id));
+  LSSet('adm_drafts', drafts);
+  closeCleanupModalAdmin();
+  renderDrafts(); updBadges();
+  toast(`⏳ Menghapus ${ids.length} draft dari server...`);
+
+  // Tahan polling background selama proses berjalan supaya draft yang belum sempat terhapus di
+  // server tidak "ditarik balik" muncul lagi di tengah proses.
+  _bulkDeletingAdmin = true;
+  let okCount=0, failCount=0;
+  for(const id of ids){
+    const success = await deleteDraftFromCloud(id);
+    if(success) okCount++; else failCount++;
+  }
+  _bulkDeletingAdmin = false;
+
+  // Tarik ulang data asli dari server — kalau ada yang gagal terhapus (mis. diblokir RLS),
+  // draft itu akan otomatis muncul lagi supaya kelihatan jelas, bukan hilang diam-diam.
+  await pullDraftsFromCloud(true);
+
+  toast(failCount
+    ? `⚠️ ${okCount} terhapus, ${failCount} gagal dari server (draft yang gagal akan muncul lagi — kemungkinan diblokir izin/RLS di Supabase)`
+    : `✅ ${okCount} draft lama berhasil dihapus & dibersihkan dari server!`);
 }
 
 // =========================================================

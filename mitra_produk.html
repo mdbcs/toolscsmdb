@@ -1540,10 +1540,10 @@ async function init(){
 
   setSyncStatus('ok', 'Semua data tersinkron');
 
-  // Polling ringan setiap 90 detik — skip kalau sedang ada modal terbuka / user mengetik,
-  // dan hanya re-render jika data benar-benar berubah (hindari kerja render sia-sia).
+  // Polling ringan setiap 2 jam — skip kalau sedang ada modal terbuka / user mengetik / tab
+  // di-background, dan hanya re-render jika data benar-benar berubah (hindari kerja render sia-sia).
   setInterval(async ()=>{
-    if(_mpIsEditing) return;
+    if(_mpIsEditing || document.hidden) return;
     const modalOpen = ['mitraModal','prodModal','xlModal'].some(id=>{
       const el=document.getElementById(id); return el && el.style.display==='flex';
     });
@@ -1561,7 +1561,7 @@ async function init(){
       console.error('Polling sync error:', e);
       setSyncStatus('error','Gagal sinkron berkala: '+e.message);
     }
-  }, 90000);
+  }, 7200000);
 }
 
 init();
