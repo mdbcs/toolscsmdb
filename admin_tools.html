@@ -431,11 +431,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
     <div class="modal-title"><span id="mdPaketTitle">Tambah Paket</span><button onclick="closeModal('mdPaket')">✕</button></div>
     <div class="fr">
       <div class="fg"><label>Brand*</label>
-        <select id="pk2_brand">
-          <option value="ngemiloh">Ngemiloh</option><option value="melumer">Melumer</option>
-          <option value="gokuah">Gokuah</option><option value="yamie">Yamie Curry</option>
-          <option value="bacigor">Bacigor Mamang</option>
-        </select>
+        <select id="pk2_brand"></select>
       </div>
       <div class="fg"><label>Nama Paket* (UPPERCASE)</label><input id="pk2_nama" placeholder="SILVER, GOLD, PREMIUM..." oninput="this.value=this.value.toUpperCase()"></div>
     </div>
@@ -3504,7 +3500,10 @@ function openPaketModal(brand=null, nama=null){
   const db=getEffectivePaketDB();
   const p=(brand&&nama)?db[brand]?.[nama]:null;
   document.getElementById('mdPaketTitle').textContent=p?'Edit Paket':'Tambah Paket';
-  document.getElementById('pk2_brand').value=brand||'ngemiloh';
+  const brandSel=document.getElementById('pk2_brand');
+  const brands=getAllBrands();
+  brandSel.innerHTML=brands.map(b=>`<option value="${b.id}">${b.label}</option>`).join('');
+  brandSel.value=brand||brands[0]?.id||'';
   document.getElementById('pk2_nama').value=nama||'';
   document.getElementById('pk2_harga').value=p?.harga||'';
   document.getElementById('pk2_berat').value=p?.berat||'';
