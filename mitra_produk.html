@@ -1516,6 +1516,15 @@ let _mpIsEditing = false; // true saat user sedang mengisi form / modal terbuka
 document.addEventListener('focusin', (e)=>{ if(e.target.matches('input,textarea,select')) _mpIsEditing = true; });
 document.addEventListener('focusout', ()=>{ setTimeout(()=>{ _mpIsEditing = false; }, 800); });
 
+function populateBrandSelect(selectId, emptyLabel){
+  const sel = document.getElementById(selectId);
+  if(!sel) return;
+  const cur = sel.value;
+  const opts = Object.keys(BRANDS).filter(k=>!BRANDS[k]?.disabled).map(k=>`<option value="${k}">${BRANDS[k].label||k}</option>`).join('');
+  sel.innerHTML = (emptyLabel!==null ? `<option value="">${emptyLabel}</option>` : '') + opts;
+  if(Object.keys(BRANDS).includes(cur)) sel.value = cur;
+}
+
 async function init(){
   renderMitraDB();
   renderProduk();
@@ -1533,6 +1542,7 @@ async function init(){
     if(remoteBrands){
       BRANDS = remoteBrands;
       renderProduk();
+      populateBrandSelect('mm_brand', '-- Pilih --');
     }
   } catch(e) {
     console.error('loadBrandsSync failed in init:', e);
@@ -1555,7 +1565,7 @@ async function init(){
       const rb = await loadBrandsSync();
       if(rb) BRANDS = rb;
       if(JSON.stringify(mitraDB)!==prevMitraJSON) renderMitraDB();
-      if(JSON.stringify(BRANDS)!==prevBrandsJSON) renderProduk();
+      if(JSON.stringify(BRANDS)!==prevBrandsJSON){ renderProduk(); populateBrandSelect('mm_brand', '-- Pilih --'); }
       setSyncStatus('ok', 'Tersinkron ✓');
     }catch(e){
       console.error('Polling sync error:', e);

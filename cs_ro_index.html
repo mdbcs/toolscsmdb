@@ -1142,6 +1142,33 @@ async function loadMitraSync() {
   }
 }
 
+// Ikon & kategori untuk brand bawaan (dekorasi saja). Brand baru pakai ikon default 🏷️.
+const BRAND_ICONS = {ngemiloh:'🍿', melumer:'🧁', gokuah:'🍜', yamie:'🍛', bacigor:'🥟'};
+const BRAND_CATS  = {ngemiloh:'Makanan Kering', melumer:'Makanan Kering', gokuah:'Makanan Kuah', yamie:'Makanan Kuah', bacigor:'Repeat Only'};
+
+// Render ulang kartu "Pilih Brand" di step 1 dari data BRANDS (termasuk brand baru dari Mitra & Produk)
+function renderBrandPickGrid(){
+  const grid = document.getElementById('brandPickGrid');
+  if(!grid) return;
+  grid.innerHTML = Object.keys(BRANDS).filter(k=>!BRANDS[k]?.disabled).map(key=>{
+    const b = BRANDS[key]||{};
+    const icon = BRAND_ICONS[key] || '🏷️';
+    const cat = BRAND_CATS[key] || '';
+    const bg = b.color ? `background:${b.color}22;` : '';
+    return `<div class="bb brand-${key}" onclick="selBrand('${key}')"><div class="bmk" style="${bg}">${icon}</div><div class="bname">${b.label||key}</div>${cat?`<div class="bcat">${cat}</div>`:''}</div>`;
+  }).join('');
+}
+
+// Isi ulang dropdown brand (dipakai untuk filter draft & form Tambah Mitra) dari data BRANDS
+function populateBrandSelect(selectId, emptyLabel){
+  const sel = document.getElementById(selectId);
+  if(!sel) return;
+  const cur = sel.value;
+  const opts = Object.keys(BRANDS).filter(k=>!BRANDS[k]?.disabled).map(k=>`<option value="${k}">${BRANDS[k].label||k}</option>`).join('');
+  sel.innerHTML = (emptyLabel!==null ? `<option value="">${emptyLabel}</option>` : '') + opts;
+  if(Object.keys(BRANDS).includes(cur)) sel.value = cur;
+}
+
 function loadBrandsLocal() {
   const saved = localStorage.getItem('brandsDB');
   if (saved) { try { return JSON.parse(saved); } catch(e){} }
@@ -3507,8 +3534,11 @@ async function init() {
   await loadMitraSync();
   const loadedBrands = await loadBrandsSync(); // fungsi ini sudah set status sendiri (ok/error+alasan)
   BRANDS = normalizeBrandProducts(loadedBrands);
+  renderBrandPickGrid();
   applyBrandVisibility();
   populateProdSettingBrandDropdown();
+  populateBrandSelect('draftBrandFilter', '🏷️ Semua Brand');
+  populateBrandSelect('mm_brand', '-- Pilih --');
 
   // Sinkronisasi daftar ekspedisi
   await loadEkspListRemote();
@@ -3523,7 +3553,13 @@ async function init() {
       const rb = await loadBrandsSync();
       if(rb){
         const merged = normalizeBrandProducts(rb);
-        if(JSON.stringify(merged)!==prevBrandsJSON){ BRANDS = merged; applyBrandVisibility(); }
+        if(JSON.stringify(merged)!==prevBrandsJSON){
+          BRANDS = merged;
+          renderBrandPickGrid();
+          applyBrandVisibility();
+          populateBrandSelect('draftBrandFilter', '🏷️ Semua Brand');
+          populateBrandSelect('mm_brand', '-- Pilih --');
+        }
       }
     }catch(e){ /* loadMitraSync/loadBrandsSync sudah handle status sendiri */ }
   }, 7200000);
