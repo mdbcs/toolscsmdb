@@ -217,10 +217,14 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 <!-- ===== MODAL: TAMBAH BRAND BARU ===== -->
 <div class="modal-bg" id="addBrandModal" style="display:none;" onclick="if(event.target===this)closeAddBrandModal()">
   <div class="modal">
-    <div class="modal-title"><span>Tambah Brand Baru</span><button onclick="closeAddBrandModal()">✕</button></div>
-    <div class="fg"><label>ID Brand (huruf kecil, tanpa spasi) *</label><input id="ab_id" placeholder="cth: kentangku"></div>
+    <div class="modal-title"><span id="abTitle">Tambah Brand Baru</span><button onclick="closeAddBrandModal()">✕</button></div>
+    <div class="fg"><label>ID Brand (kosongkan = otomatis dari nama)</label><input id="ab_id" placeholder="cth: kentangku"></div>
     <div class="fg"><label>Nama Tampilan *</label><input id="ab_label" placeholder="cth: Kentangku Crispy"></div>
     <div class="fg"><label>Warna Tema</label><input id="ab_color" type="color" value="#2B5CE6" style="height:38px;border-radius:8px;border:1px solid var(--border);width:100%;cursor:pointer;"></div>
+    <div style="display:flex;gap:10px;">
+      <div class="fg" style="flex:0 0 90px;"><label>Ikon</label><input id="ab_icon" placeholder="🏷️" maxlength="4"></div>
+      <div class="fg" style="flex:1;"><label>Kategori (tampil di CS RO)</label><input id="ab_cat" placeholder="cth: Makanan Kering"></div>
+    </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
       <button class="btn btn-o" onclick="closeAddBrandModal()">Batal</button>
       <button class="btn btn-p" onclick="saveNewBrand()">Simpan Brand</button>
@@ -346,6 +350,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
       <div class="al al-w" id="xlProdWarn" style="display:none;margin-top:10px;"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap;">
         <button class="btn btn-o" onclick="xlProdReset()">← Ganti File</button>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;cursor:pointer;"><input type="checkbox" id="xlProdAutoBrand" checked onchange="showXlProdPreview()"> Buat brand baru otomatis</label>
         <select id="xlProdDupMode" style="border:1.5px solid var(--border);border-radius:var(--r);padding:7px 10px;font-family:inherit;font-size:12px;background:var(--surface);">
           <option value="update">Duplikat kode: Update</option>
           <option value="skip">Duplikat kode: Lewati</option>
@@ -909,8 +914,10 @@ function parseXlProdFile(file){
       if(!rows.length){ toast('⚠️ Sheet kosong'); return; }
       xlProdParsed=rows.map(r=>{
         function gc(keys){for(const k of Object.keys(r)){for(const key of keys){if(k.toLowerCase().replace(/\s+/g,'').includes(key))return String(r[k]).trim();}}return'';}
-        const brandRaw=gc(['brand','merek']).toLowerCase();
-        const brand=BRAND_MAP[brandRaw]||brandRaw;
+        const brandRaw=gc(['brand','merek']);
+        const brandFound=resolveBrandKey(brandRaw);
+        const brand=brandFound||normBrandStr(brandRaw);
+        const brandLabel=brandFound?'':String(brandRaw).trim();
         const code=cleanProdCode(gc(['kode','code']));
         const name=gc(['namaproduk','nama']);
         const unit=normalizeUnit(gc(['satuan','unit']))||'kg';
@@ -919,7 +926,7 @@ function parseXlProdFile(file){
         const kategori=gc(['kategori'])||inferKategori({name});
         const aliasRaw=gc(['alias','keyword']);
         const alias=aliasRaw?aliasRaw.split(/[;,]/).map(a=>a.trim().toLowerCase()).filter(Boolean):[];
-        return {brand,code,name,unit,harga,berat,kategori,alias};
+        return {brand,brandLabel,code,name,unit,harga,berat,kategori,alias};
       }).filter(r=>r.brand && r.name);
       showXlProdPreview();
     }catch(err){ toast('❌ Gagal baca file: '+err.message); }
@@ -934,17 +941,20 @@ function showXlProdPreview(){
   const invalid=total-valid;
   const dup=xlProdParsed.filter(r=>BRANDS[r.brand]?.products?.find(p=>p.code===r.code)).length;
   const unknownBrand=xlProdParsed.filter(r=>!BRANDS[r.brand]).length;
+  const autoBrand=!!(document.getElementById('xlProdAutoBrand')||{}).checked;
+  const newBrandNames=[...new Set(xlProdParsed.filter(r=>!BRANDS[r.brand]).map(r=>r.brandLabel||r.brand))];
   document.getElementById('xlProdStat').innerHTML=`
     <div class="xl-stat-item"><b>${total}</b><span>Total</span></div>
     <div class="xl-stat-item"><b style="color:var(--green)">${valid}</b><span>Valid</span></div>
     ${invalid?`<div class="xl-stat-item"><b style="color:var(--red)">${invalid}</b><span>Tidak lengkap</span></div>`:''}
     ${dup?`<div class="xl-stat-item"><b style="color:var(--warn)">${dup}</b><span>Kode duplikat</span></div>`:''}
-    ${unknownBrand?`<div class="xl-stat-item"><b style="color:var(--red)">${unknownBrand}</b><span>Brand tidak dikenal</span></div>`:''}`;
+    ${unknownBrand?`<div class="xl-stat-item"><b style="color:var(${autoBrand?'--green':'--red'})">${unknownBrand}</b><span>${autoBrand?'Brand baru':'Brand tidak dikenal'}</span></div>`:''}`;
   const warnEl=document.getElementById('xlProdWarn');
   let warnMsgs=[];
   if(invalid) warnMsgs.push(`${invalid} baris tidak lengkap (brand/nama/harga kosong) — akan dilewati.`);
-  if(unknownBrand) warnMsgs.push(`${unknownBrand} baris brand-nya tidak dikenal — tambah brand itu dulu di tab "Pengaturan Brand", lalu import ulang.`);
-  if(warnMsgs.length){ warnEl.style.display='flex'; warnEl.textContent='⚠️ '+warnMsgs.join(' '); }
+  if(unknownBrand && !autoBrand) warnMsgs.push(`${unknownBrand} baris brand-nya tidak dikenal — centang "Buat brand baru otomatis" di bawah, atau tambah brand itu dulu di tab "Pengaturan Brand".`);
+  if(unknownBrand && autoBrand) warnMsgs.push(`Brand baru akan dibuat otomatis saat import: ${newBrandNames.join(', ')}.`);
+  if(warnMsgs.length){ warnEl.style.display='flex'; warnEl.textContent=((warnMsgs.length===1&&unknownBrand&&autoBrand)?'ℹ️ ':'⚠️ ')+warnMsgs.join(' '); }
   else warnEl.style.display='none';
 
   document.getElementById('xlProdHead').innerHTML='<tr>'+XL_PROD_COLS.map(c=>`<th>${c}</th>`).join('')+'<th>Status</th></tr>';
@@ -952,7 +962,7 @@ function showXlProdPreview(){
     const isValid=r.brand && r.name && r.harga>0;
     const isDup=!!BRANDS[r.brand]?.products?.find(p=>p.code===r.code);
     const brandKnown=!!BRANDS[r.brand];
-    const status=!brandKnown?`<span style="color:var(--red)">❌ Brand asing</span>`:!isValid?`<span style="color:var(--red)">⚠ Tidak lengkap</span>`:isDup?`<span style="color:var(--warn)">⚡ Duplikat</span>`:`<span style="color:var(--green)">✓ Baru</span>`;
+    const status=!brandKnown?(autoBrand?`<span style="color:var(--green)">🆕 Brand baru</span>`:`<span style="color:var(--red)">❌ Brand asing</span>`):!isValid?`<span style="color:var(--red)">⚠ Tidak lengkap</span>`:isDup?`<span style="color:var(--warn)">⚡ Duplikat</span>`:`<span style="color:var(--green)">✓ Baru</span>`;
     return `<tr><td>${r.brand||'—'}</td><td>${r.code||'—'}</td><td>${r.name||'—'}</td><td>${r.unit||'—'}</td><td>Rp${(r.harga||0).toLocaleString('id')}</td><td>${r.berat||0}</td><td>${r.kategori||'—'}</td><td>${status}</td></tr>`;
   }).join('');
   document.getElementById('xlProdPreview').style.display='block';
@@ -963,6 +973,17 @@ function showXlProdPreview(){
 async function doImportProduk(){
   const mode=document.getElementById('xlProdDupMode').value;
   let added=0, updated=0, skipped=0;
+  const autoBrand=!!(document.getElementById('xlProdAutoBrand')||{}).checked;
+  let newBrands=0;
+  if(autoBrand){
+    const PAL=['#E6492B','#2B8AE6','#8A2BE6','#1A8A4A','#E6A82B','#E62B8A','#2BB5E6','#6B7280'];
+    xlProdParsed.forEach(r=>{
+      if(r.brand && r.name && r.harga && !BRANDS[r.brand]){
+        BRANDS[r.brand]={label:r.brandLabel||r.brand, color:PAL[Object.keys(BRANDS).length%PAL.length], icon:'🏷️', cat:'', products:[], disabled:false};
+        newBrands++;
+      }
+    });
+  }
   xlProdParsed.forEach(r=>{
     if(!r.brand || !r.name || !r.harga){ skipped++; return; }
     if(!BRANDS[r.brand]){ skipped++; return; } // brand harus sudah ada (dibuat di Pengaturan Brand)
@@ -979,8 +1000,9 @@ async function doImportProduk(){
   });
 
   closeXlProdModal();
+  if(newBrands){ renderBrandSettingList(); populateBrandSelect('mm_brand','-- Pilih --'); }
   renderProduk();
-  toast(`⏳ Import: +${added} baru, ${updated} diperbarui, ${skipped} dilewati — menyinkronkan ke server...`);
+  toast(`⏳ Import: +${added} baru, ${updated} diperbarui, ${skipped} dilewati${newBrands?`, ${newBrands} brand baru`:''} — menyinkronkan ke server...`);
   await saveBrands();
   toast(`✅ Import produk selesai & tersinkron ke server!`);
 }
@@ -1412,7 +1434,20 @@ let disabledBrands = []; // daftar brand id yang dinonaktifkan (tidak hapus data
 
 const XL_COLS=['Kode Mitra','Nama','No Telp','Alamat','Ekspedisi','Brand'];
 const XL_PROD_COLS=['Brand','Kode','Nama Produk','Satuan','Harga','Berat(gram)','Kategori','Alias'];
-const BRAND_MAP={ngemiloh:'ngemiloh',melumer:'melumer',gokuah:'gokuah',yamie:'yamie','yamie curry':'yamie',bacigor:'bacigor','bacigor mamang':'bacigor'};
+// Pencocokan brand DINAMIS: dicocokkan ke id / nama tampilan brand yang ada di "Pengaturan Brand",
+// bukan daftar tetap di kode. Brand baru otomatis dikenali. Spasi, tanda baca, huruf besar/kecil diabaikan
+// ("Krispy Roll" = "krispy roll" = krispyroll).
+const BRAND_ALIAS_LAMA={'yamie curry':'yamie','bacigor mamang':'bacigor'};
+function normBrandStr(s){ return String(s==null?'':s).toLowerCase().replace(/[^a-z0-9]+/g,''); }
+function resolveBrandKey(raw){
+  const n=normBrandStr(raw); if(!n) return '';
+  for(const k of Object.keys(BRANDS)){
+    if(normBrandStr(k)===n || normBrandStr(BRANDS[k]&&BRANDS[k].label)===n) return k;
+  }
+  const a=BRAND_ALIAS_LAMA[String(raw).toLowerCase().trim()];
+  return (a && BRANDS[a]) ? a : '';
+}
+const BRAND_MAP=new Proxy({},{get:(t,k)=>typeof k==='string'?(resolveBrandKey(k)||undefined):undefined});
 
 // =========================================================
 // SYNC STATUS
@@ -1466,9 +1501,10 @@ function renderBrandSettingList(){
     return `<div class="card" style="display:flex;align-items:center;gap:14px;padding:14px 16px;margin-bottom:0;">
       <div style="width:14px;height:14px;border-radius:50%;background:${b.color||'#888'};flex-shrink:0;"></div>
       <div style="flex:1;min-width:0;">
-        <div style="font-weight:700;font-size:14px;">${b.label||k} <span style="font-size:11px;color:var(--text3);font-weight:400;">(${k})</span></div>
+        <div style="font-weight:700;font-size:14px;">${b.icon?b.icon+' ':''}${b.label||k} <span style="font-size:11px;color:var(--text3);font-weight:400;">(${k})</span></div>
         <div style="font-size:12px;color:var(--text3);margin-top:2px;">${jumlahProduk} produk ${isOff?'· <span style="color:var(--red);font-weight:600;">Nonaktif — tersembunyi dari CS FU & CS RO</span>':''}</div>
       </div>
+      <button class="btn btn-o btn-sm" onclick="openAddBrandModal('${k}')">✏️ Edit</button>
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;font-weight:600;color:${isOff?'var(--text3)':'var(--green)'};white-space:nowrap;">
         <input type="checkbox" ${isOff?'':'checked'} onchange="toggleBrandDisabled('${k}', !this.checked)" style="width:16px;height:16px;cursor:pointer;">
         ${isOff?'Nonaktif':'Aktif'}
@@ -1486,26 +1522,51 @@ async function toggleBrandDisabled(brandKey, disabled){
   toast(`✅ ${BRANDS[brandKey].label} ${disabled?'dinonaktifkan':'diaktifkan'} & tersinkron!`);
 }
 
-function openAddBrandModal(){
-  document.getElementById('ab_id').value='';
-  document.getElementById('ab_label').value='';
-  document.getElementById('ab_color').value='#2B5CE6';
+let editBrandKey=null;
+function openAddBrandModal(key){
+  editBrandKey=(typeof key==='string' && BRANDS[key]) ? key : null;
+  const b=editBrandKey ? BRANDS[editBrandKey] : null;
+  document.getElementById('abTitle').textContent = b ? 'Edit Brand — '+(b.label||editBrandKey) : 'Tambah Brand Baru';
+  const idEl=document.getElementById('ab_id');
+  idEl.value=editBrandKey||''; idEl.readOnly=!!b; idEl.style.opacity=b?'.6':'1';
+  document.getElementById('ab_label').value=(b&&b.label)||'';
+  document.getElementById('ab_color').value=(b&&b.color)||'#2B5CE6';
+  document.getElementById('ab_icon').value=(b&&b.icon)||'';
+  document.getElementById('ab_cat').value=(b&&b.cat)||'';
   document.getElementById('addBrandModal').style.display='flex';
 }
-function closeAddBrandModal(){ document.getElementById('addBrandModal').style.display='none'; }
+function closeAddBrandModal(){ document.getElementById('addBrandModal').style.display='none'; editBrandKey=null; }
 
 async function saveNewBrand(){
-  const id=document.getElementById('ab_id').value.trim().toLowerCase().replace(/[^a-z0-9]+/g,'');
   const label=document.getElementById('ab_label').value.trim();
   const color=document.getElementById('ab_color').value||'#2B5CE6';
-  if(!id||!label){ toast('⚠️ ID dan Nama brand wajib diisi!'); return; }
-  if(BRANDS[id]){ toast('⚠️ Brand dengan ID ini sudah ada!'); return; }
-  BRANDS[id]={label, color, products:[], disabled:false};
+  const icon=document.getElementById('ab_icon').value.trim()||'🏷️';
+  const cat=document.getElementById('ab_cat').value.trim();
+  if(!label){ toast('⚠️ Nama brand wajib diisi!'); return; }
+
+  // MODE EDIT — ubah nama/warna/ikon/kategori tanpa menyentuh ID & produk (ID tetap supaya semua tools tetap nyambung)
+  if(editBrandKey){
+    const eb=BRANDS[editBrandKey];
+    if(!eb){ closeAddBrandModal(); return; }
+    eb.label=label; eb.color=color; eb.icon=icon; eb.cat=cat;
+    closeAddBrandModal();
+    renderBrandSettingList(); renderProduk(); populateBrandSelect('mm_brand','-- Pilih --');
+    toast('⏳ Menyimpan perubahan brand...');
+    await saveBrands();
+    toast(`✅ Brand "${label}" diperbarui & tersinkron ke semua tools!`);
+    return;
+  }
+
+  // MODE TAMBAH — ID otomatis dari nama kalau dikosongkan
+  const id=document.getElementById('ab_id').value.trim().toLowerCase().replace(/[^a-z0-9]+/g,'') || normBrandStr(label);
+  if(!id){ toast('⚠️ Nama brand tidak valid'); return; }
+  if(resolveBrandKey(id) || resolveBrandKey(label)){ toast('⚠️ Brand ini sudah ada!'); return; }
+  BRANDS[id]={label, color, icon, cat, products:[], disabled:false};
   closeAddBrandModal();
-  renderBrandSettingList();
+  renderBrandSettingList(); renderProduk(); populateBrandSelect('mm_brand','-- Pilih --');
   toast('⏳ Menyimpan brand baru...');
   await saveBrands();
-  toast(`✅ Brand "${label}" ditambahkan & tersinkron! Sekarang bisa diisi produknya di tab Produk.`);
+  toast(`✅ Brand "${label}" ditambahkan & tersinkron ke semua tools! Sekarang isi produknya di tab Produk.`);
 }
 
 
@@ -1528,6 +1589,7 @@ function populateBrandSelect(selectId, emptyLabel){
 async function init(){
   renderMitraDB();
   renderProduk();
+  populateBrandSelect('mm_brand', '-- Pilih --');
   setSyncStatus('loading', 'Menghubungkan ke database...');
 
   try {
@@ -1573,6 +1635,20 @@ async function init(){
     }
   }, 7200000);
 }
+
+// Sinkron otomatis saat tab dibuka kembali (tanpa nunggu polling 2 jam)
+let _lastBrandSync=Date.now();
+document.addEventListener('visibilitychange', async ()=>{
+  if(document.hidden || _mpIsEditing || Date.now()-_lastBrandSync<30000) return;
+  const modalOpen=['mitraModal','prodModal','xlModal','xlProdModal','addBrandModal'].some(id=>{ const el=document.getElementById(id); return el && el.style.display==='flex'; });
+  if(modalOpen) return;
+  _lastBrandSync=Date.now();
+  try{
+    const prev=JSON.stringify(BRANDS);
+    const rb=await loadBrandsSync();
+    if(rb){ BRANDS=rb; if(JSON.stringify(BRANDS)!==prev){ renderProduk(); renderBrandSettingList(); populateBrandSelect('mm_brand','-- Pilih --'); } }
+  }catch(e){}
+});
 
 init();
 </script>

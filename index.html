@@ -688,6 +688,11 @@ async function loadLaporan(){
 
     // Per brand breakdown
     const brandLabels={ngemiloh:'Ngemiloh',melumer:'Melumer',gokuah:'Gokuah',yamie:'Yamie Curry',bacigor:'Bacigor Mamang'};
+    try{ // brand baru ikut tampil dengan nama aslinya (dari Mitra & Produk)
+      const cfgB=await sbGet('shared_config','key=eq.cs_ro_brands');
+      const bv=(cfgB[0]&&cfgB[0].value)||{};
+      Object.keys(bv).forEach(k=>{ brandLabels[k]=(bv[k]&&bv[k].label)||k; });
+    }catch(e){}
     const brandKeys=[...new Set([...fu.map(e=>e.brand),...ro.map(d=>d.brand)])].filter(Boolean);
     const brandRows=brandKeys.map(bk=>{
       const bfu=fu.filter(e=>e.brand===bk), bfuDeal=bfu.filter(e=>e.is_deal).length;

@@ -230,8 +230,11 @@ const SB_HDR = { 'Content-Type':'application/json', 'apikey':SB_KEY, 'Authorizat
 async function sbGet(t,p=''){const r=await fetch(`${SB_URL}/rest/v1/${t}?${p}`,{headers:SB_HDR});if(!r.ok)throw new Error(await r.text());return r.json();}
 async function sbUpsert(t,b){const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:{...SB_HDR,'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(b)});if(!r.ok)throw new Error(await r.text());return r.json();}
 
-const BRAND_LABEL = {ngemiloh:'Ngemiloh',melumer:'Melumer',gokuah:'Gokuah',yamie:'Yamie Curry',bacigor:'Bacigor Mamang'};
-const BRAND_COLOR = {ngemiloh:'#F0A253',melumer:'#2B5CE6',gokuah:'#D94040',yamie:'#1A8A4A',bacigor:'#7B5EA7'};
+let BRAND_META = {}; // dimuat dari database bersama (Mitra & Produk) — brand baru otomatis punya nama & warna
+const BRAND_LABEL_BASE = {ngemiloh:'Ngemiloh',melumer:'Melumer',gokuah:'Gokuah',yamie:'Yamie Curry',bacigor:'Bacigor Mamang'};
+const BRAND_COLOR_BASE = {ngemiloh:'#F0A253',melumer:'#2B5CE6',gokuah:'#D94040',yamie:'#1A8A4A',bacigor:'#7B5EA7'};
+const BRAND_LABEL = new Proxy(BRAND_LABEL_BASE,{get:(t,k)=>(typeof k==='string'&&!(k in t))?((BRAND_META&&BRAND_META[k])||{}).label:t[k]});
+const BRAND_COLOR = new Proxy(BRAND_COLOR_BASE,{get:(t,k)=>(typeof k==='string'&&!(k in t))?((BRAND_META&&BRAND_META[k])||{}).color:t[k]});
 
 function setSyncStatus(icon,text,color){
   const el=document.getElementById('syncStatus');
@@ -306,6 +309,7 @@ async function loadProdukData(){
   try{
     const rows = await sbGet('shared_config', 'key=eq.cs_ro_brands');
     const val = (rows[0] && rows[0].value) || {};
+    BRAND_META = val;
     const out = [];
     Object.keys(val).forEach(bk=>{
       (val[bk].products||[]).forEach(p=>{

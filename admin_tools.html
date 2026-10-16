@@ -960,8 +960,13 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 // =========================================================
 // DATA
 // =========================================================
-const BRAND_LABEL = {ngemiloh:'Ngemiloh',melumer:'Melumer',gokuah:'Gokuah',yamie:'Yamie Curry',bacigor:'Bacigor Mamang'};
-const BRAND_COLOR = {ngemiloh:'#F0A253',melumer:'#2B5CE6',gokuah:'#D94040',yamie:'#1A8A4A',bacigor:'#7B5EA7'};
+const BRAND_LABEL_BASE = {ngemiloh:'Ngemiloh',melumer:'Melumer',gokuah:'Gokuah',yamie:'Yamie Curry',bacigor:'Bacigor Mamang'};
+const BRAND_COLOR_BASE = {ngemiloh:'#F0A253',melumer:'#2B5CE6',gokuah:'#D94040',yamie:'#1A8A4A',bacigor:'#7B5EA7'};
+// Brand di luar 5 bawaan (brand baru dari Mitra & Produk) otomatis dapat nama & warna dari database bersama,
+// jadi BRAND_LABEL[x] / BRAND_COLOR[x] di seluruh tools ini tidak lagi menampilkan id mentah.
+function _brandMeta(k){ try{ return (orderBrandsMeta&&orderBrandsMeta[k]) || (customBrandDB||[]).find(b=>b.id===k) || null; }catch(e){ return null; } }
+const BRAND_LABEL = new Proxy(BRAND_LABEL_BASE,{get:(t,k)=>(typeof k==='string'&&!(k in t))?(_brandMeta(k)||{}).label:t[k]});
+const BRAND_COLOR = new Proxy(BRAND_COLOR_BASE,{get:(t,k)=>(typeof k==='string'&&!(k in t))?(_brandMeta(k)||{}).color:t[k]});
 
 // Normalisasi satuan produk dari berbagai format ke format standar (konsisten dengan CS RO & Mitra/Produk)
 function normalizeUnit(raw){
@@ -1711,6 +1716,15 @@ function getOrderBrands(){
   return [...base.filter(b=>!disabledBase.has(b.id)), ...extra];
 }
 
+// Samakan id brand versi lama/beda penulisan (mis. toripop_chicken) ke id resmi di Mitra & Produk (toripopchicken)
+function canonBrandId(id){
+  const n=String(id==null?'':id).toLowerCase().replace(/[^a-z0-9]+/g,'');
+  if(!n) return id;
+  const known=[...Object.keys(BRAND_COLOR_BASE), ...Object.keys(orderBrandsMeta||{})];
+  const hit=known.find(k=>String(k).toLowerCase().replace(/[^a-z0-9]+/g,'')===n);
+  return hit||id;
+}
+
 // Isi ulang dropdown brand dari getOrderBrands() (dipakai di form Verifikasi, filter Draft/Aktual/Cetak, Marketing, dsb)
 function populateBrandSelect(selectId, emptyLabel){
   const sel = document.getElementById(selectId);
@@ -1730,6 +1744,23 @@ function populateAllBrandSelects(){
   populateBrandSelect('cetakFilterBrand', 'Semua Brand');
   populateBrandSelect('mkt_brand', 'Semua Brand');
 }
+
+// Sinkron brand/produk otomatis saat tab dibuka kembali
+let _lastBrandMetaSync=Date.now();
+document.addEventListener('visibilitychange', async ()=>{
+  if(document.hidden || Date.now()-_lastBrandMetaSync<30000) return;
+  _lastBrandMetaSync=Date.now();
+  try{
+    const rows=await sbGet('shared_config','key=eq.cs_ro_brands');
+    const v=rows[0]&&rows[0].value;
+    if(v && JSON.stringify(v)!==JSON.stringify(orderBrandsMeta)){
+      orderBrandsMeta=v; localStorage.setItem('orderBrandsMeta',JSON.stringify(v));
+      const f=flattenBrandsToProduk(v);
+      if(f.length){ sharedProdukDB=f; localStorage.setItem('sharedProdukDB',JSON.stringify(f)); }
+      populateAllBrandSelects(); renderProduk(); renderPaketBrand();
+    }
+  }catch(e){}
+});
 
 function loadSharedProdukLocal(){
   try { return JSON.parse(localStorage.getItem('sharedProdukDB')||'[]'); }
@@ -1759,9 +1790,10 @@ function getEffectivePaketDB(){
   // Start with PAKET_DB bawaan
   Object.entries(PAKET_DB).forEach(([brand,pakets])=>{ db[brand]={...pakets}; });
   // Custom brands dari Sheet
-  customBrandDB.forEach(b=>{ if(!db[b.id]) db[b.id]={}; });
+  customBrandDB.forEach(b=>{ const bid=canonBrandId(b.id); if(!db[bid]) db[bid]={}; });
   // Override dengan data paket dari Sheet (jika ada)
-  customPaketDB.forEach(cp=>{
+  customPaketDB.forEach(cp0=>{
+    const cp={...cp0, brand:canonBrandId(cp0.brand)};
     if(!db[cp.brand]) db[cp.brand]={};
     if(cp._del) delete db[cp.brand][cp.nama];
     else db[cp.brand][cp.nama]={harga:cp.harga,berat:cp.berat,beratMkt:cp.beratMkt||cp.berat,koli:cp.koli||1,subsidi:cp.subsidi,packing:cp.packing};
@@ -3471,10 +3503,13 @@ function autoDetectBB(){
 // PAKET & BRAND MANAGEMENT
 // =========================================================
 function getAllBrands(){
-  // Merge base BRAND_COLOR/LABEL with customBrandDB
-  const base=Object.keys(BRAND_COLOR).map(id=>({id,label:BRAND_LABEL[id]||id,color:BRAND_COLOR[id]}));
-  const customIds=new Set(customBrandDB.map(b=>b.id));
-  return [...base.filter(b=>!customIds.has(b.id)),...customBrandDB];
+  // Satu daftar brand: 5 bawaan + semua brand dari Mitra & Produk (termasuk yang nonaktif, supaya paketnya tetap bisa dikelola)
+  // + brand kustom lama dari panel ini (id disamakan lewat canonBrandId).
+  const map=new Map();
+  Object.keys(BRAND_COLOR_BASE).forEach(id=>map.set(id,{id,label:BRAND_LABEL_BASE[id]||id,color:BRAND_COLOR_BASE[id]}));
+  Object.keys(orderBrandsMeta||{}).forEach(id=>{ const m=orderBrandsMeta[id]||{}; map.set(id,{id,label:m.label||id,color:m.color||'#888'}); });
+  customBrandDB.forEach(b=>{ const id=canonBrandId(b.id); if(!map.has(id)) map.set(id,{id,label:b.label,color:b.color}); });
+  return [...map.values()];
 }
 
 function getEffectivePaketDB(){
@@ -3484,9 +3519,10 @@ function getEffectivePaketDB(){
     db[brand]={...pakets};
   });
   // Add custom brands
-  customBrandDB.forEach(b=>{if(!db[b.id])db[b.id]={};});
+  customBrandDB.forEach(b=>{const bid=canonBrandId(b.id);if(!db[bid])db[bid]={};});
   // Apply custom pakets (add/edit/delete)
-  customPaketDB.forEach(cp=>{
+  customPaketDB.forEach(cp0=>{
+    const cp={...cp0, brand:canonBrandId(cp0.brand)};
     if(!db[cp.brand]) db[cp.brand]={};
     if(cp._del) delete db[cp.brand][cp.nama];
     else db[cp.brand][cp.nama]={harga:cp.harga,berat:cp.berat,beratMkt:cp.beratMkt||cp.berat,koli:cp.koli||1,subsidi:cp.subsidi,packing:cp.packing};
@@ -3527,9 +3563,9 @@ function savePaket(){
   const editBrand=document.getElementById('mdPaket').dataset.editBrand;
   const editNama=document.getElementById('mdPaket').dataset.editNama;
   if(editBrand&&editNama&&(editBrand!==brand||editNama!==nama)){
-    customPaketDB=customPaketDB.filter(x=>!(x.brand===editBrand&&x.nama===editNama));
+    customPaketDB=customPaketDB.filter(x=>!(canonBrandId(x.brand)===editBrand&&x.nama===editNama));
   }
-  customPaketDB=customPaketDB.filter(x=>!(x.brand===brand&&x.nama===nama));
+  customPaketDB=customPaketDB.filter(x=>!(canonBrandId(x.brand)===brand&&x.nama===nama));
   const row={_key:`${brand}|${nama}`,brand,nama,harga,berat,beratMkt,koli,subsidi,packing};
   customPaketDB.push(row);
   closeModal('mdPaket');renderPaketBrand();toast('💾 Menyimpan...');
@@ -3538,7 +3574,7 @@ function savePaket(){
 
 async function delPaket(brand,nama){
   if(!confirm(`Hapus paket ${nama} dari ${brand}?`))return;
-  customPaketDB=customPaketDB.filter(x=>!(x.brand===brand&&x.nama===nama));
+  customPaketDB=customPaketDB.filter(x=>!(canonBrandId(x.brand)===brand&&x.nama===nama));
   renderPaketBrand();toast('🗑 Menghapus...');
   try{ await savePaketCustomRemote(); toast('✅ Dihapus & tersinkron!'); }
   catch(e){ toast('⚠️ Gagal sync online'); }
@@ -3556,7 +3592,7 @@ function openBrandModal(id=null){
 }
 
 async function saveBrand(){
-  const id=document.getElementById('br_id').value.trim().toLowerCase().replace(/\s+/g,'_');
+  const id=document.getElementById('br_id').value.trim().toLowerCase().replace(/[^a-z0-9]+/g,'');
   const label=document.getElementById('br_label').value.trim();
   const color=document.getElementById('br_color').value;
   if(!id||!label){toast('⚠️ ID dan label brand wajib!');return;}
@@ -3564,7 +3600,20 @@ async function saveBrand(){
   const row={id,label,color};
   if(ex>=0) customBrandDB[ex]=row; else customBrandDB.push(row);
   closeModal('mdBrand');renderPaketBrand();toast('💾 Menyimpan...');
-  saveBrandCustomRemote().then(()=>toast('✅ Brand tersimpan & tersinkron!')).catch(()=>toast('⚠️ Gagal sync online'));
+  saveBrandCustomRemote().then(()=>pushBrandToShared(id,label,color)).then(()=>toast('✅ Brand tersimpan & tersinkron ke semua tools!')).catch(()=>toast('⚠️ Gagal sync online'));
+}
+
+// Brand yang dibuat/diedit di sini ikut ditulis ke database bersama (cs_ro_brands) supaya CS RO, CS FU, dan
+// Mitra & Produk melihat brand yang sama dengan id yang sama.
+async function pushBrandToShared(id,label,color){
+  const rows=await sbGet('shared_config','key=eq.cs_ro_brands');
+  const val=rows[0]&&rows[0].value;
+  if(!val||!Object.keys(val).length) return; // database bersama belum ada — jangan dibuat dari sini
+  if(val[id]){ val[id].label=label; val[id].color=color; }
+  else val[id]={label,color,products:[],disabled:false};
+  await sbUpsert('shared_config',{key:'cs_ro_brands',value:val,updated_at:new Date().toISOString()});
+  orderBrandsMeta=val; localStorage.setItem('orderBrandsMeta',JSON.stringify(val));
+  populateAllBrandSelects(); renderPaketBrand();
 }
 
 function renderPaketBrand(){
